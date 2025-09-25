@@ -132,6 +132,15 @@
                 </div>
                 <p id="ban-message" class="mt-4 text-center text-sm font-semibold"></p>
             </div>
+            
+            <hr class="my-8 border-gray-600">
+            
+            <!-- Nová sekcia pre zobrazenie zabanovaných účtov -->
+            <h3 class="text-2xl font-bold mb-4 text-white text-center">Aktuálne zabanované účty</h3>
+            <div id="banned-users-list" class="flex flex-col gap-2">
+                <!-- Zoznam sa dynamicky načíta z databázy -->
+                <p class="text-center text-gray-400">Načítavam zoznam zabanovaných používateľov...</p>
+            </div>
         </div>
     </div>
 
@@ -139,7 +148,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Premenné pre prístup k DOM elementom
         const loginScreen = document.getElementById('login-screen');
@@ -166,6 +175,7 @@
         const unbanButton = document.getElementById('unban-button');
         const banMessage = document.getElementById('ban-message');
         const currentUserInfo = document.getElementById('current-user-info');
+        const bannedUsersList = document.getElementById('banned-users-list'); // Nový element
         
         // Kľúče pre ukladanie údajov v localStorage
         const STORAGE_KEY_NICKNAME = 'oz-app-nickname';
@@ -183,15 +193,79 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         const bansCollectionPath = `artifacts/${appId}/public/data/bannedUsers`;
+        
+        // Funkcia pre zobrazenie prihlasovacej obrazovky
+        function showLogin() {
+            loginScreen.classList.remove('hidden');
+            appScreen.classList.add('hidden');
+            loginMessage.textContent = `Prosím, zadaj svoj prezývku pre prístup k systému.`;
+            nicknameInput.disabled = false;
+            loginButton.disabled = false;
+        }
 
-        // Inicializácia aplikácie po načítaní stránky
+        // Funkcia pre zobrazenie hlavnej aplikácie
+        function showApp(nickname) {
+            currentNickname = nickname;
+            loginScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            welcomeMessage.textContent = `Vitaj späť, ${nickname}!`;
+            currentUserInfo.textContent = `Prihlásený ako: ${nickname}`;
+            
+            if (nickname === ADMIN_NICKNAME) {
+                adminSection.classList.remove('hidden');
+                // Spustí sledovanie banov pre admina
+                onSnapshot(collection(db, bansCollectionPath), (querySnapshot) => {
+                    const bannedUsers = [];
+                    querySnapshot.forEach((doc) => {
+                        const nickname = doc.id;
+                        const banData = doc.data();
+                        if (Date.now() < banData.expiry) {
+                            bannedUsers.push({ nickname, expiry: banData.expiry });
+                        }
+                    });
+                    renderBannedUsers(bannedUsers);
+                });
+            } else {
+                adminSection.classList.add('hidden');
+            }
+
+            loadEntries();
+        }
+        
+        // Funkcia na zobrazenie zoznamu zabanovaných používateľov
+        function renderBannedUsers(users) {
+            bannedUsersList.innerHTML = '';
+            if (users.length === 0) {
+                bannedUsersList.innerHTML = '<p class="text-center text-gray-400">Žiadne zabanované účty.</p>';
+                return;
+            }
+
+            users.forEach(user => {
+                const expiryDate = new Date(user.expiry);
+                const expiryString = expiryDate.toLocaleString('sk-SK', {
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                const userElement = document.createElement('div');
+                userElement.className = 'bg-slate-700 p-3 rounded-xl flex flex-col sm:flex-row justify-between items-center';
+                userElement.innerHTML = `
+                    <p class="font-semibold">${user.nickname}</p>
+                    <span class="text-sm text-gray-400">Vyprší: ${expiryString}</span>
+                `;
+                bannedUsersList.appendChild(userElement);
+            });
+        }
+
+
+        // Inicializácia aplikácie po načítaní stránky a prihlásení
         window.onload = async function() {
             loginScreen.classList.add('hidden');
             appScreen.classList.add('hidden');
-            await init();
-        };
-
-        async function init() {
+            
             const storedNickname = localStorage.getItem(STORAGE_KEY_NICKNAME);
             
             // Prihlásenie používateľa
@@ -202,12 +276,12 @@
                 await signInAnonymously(auth);
             }
             
-            // Reálne overenie stavu banu v reálnom čase z Firestore
-            onSnapshot(doc(db, bansCollectionPath, storedNickname || 'invalid-nickname'), (docSnapshot) => {
-                const banData = docSnapshot.data();
-                const isBannedLocally = banData && Date.now() < banData.expiry;
-                
-                if (storedNickname) {
+            // Sledujeme zmeny stavu banu v reálnom čase z Firestore
+            if (storedNickname) {
+                 onSnapshot(doc(db, bansCollectionPath, storedNickname), (docSnapshot) => {
+                    const banData = docSnapshot.data();
+                    const isBannedLocally = banData && Date.now() < banData.expiry;
+                    
                     if (isBannedLocally) {
                         isBannedState = true;
                         showLogin();
@@ -220,36 +294,11 @@
                     } else if (!isBannedState) {
                          showApp(storedNickname);
                     }
-                } else {
-                    isBannedState = false;
-                    showLogin();
-                }
-            });
-        }
-        
-        function showLogin() {
-            loginScreen.classList.remove('hidden');
-            appScreen.classList.add('hidden');
-            loginMessage.textContent = `Prosím, zadaj svoj prezývku pre prístup k systému.`;
-            nicknameInput.disabled = false;
-            loginButton.disabled = false;
-        }
-
-        function showApp(nickname) {
-            currentNickname = nickname;
-            loginScreen.classList.add('hidden');
-            appScreen.classList.remove('hidden');
-            welcomeMessage.textContent = `Vitaj späť, ${nickname}!`;
-            currentUserInfo.textContent = `Prihlásený ako: ${nickname}`;
-            
-            if (nickname === ADMIN_NICKNAME) {
-                adminSection.classList.remove('hidden');
+                });
             } else {
-                adminSection.classList.add('hidden');
+                showLogin();
             }
-
-            loadEntries();
-        }
+        };
 
         // Spracovanie prihlásenia po kliknutí na tlačidlo
         loginButton.addEventListener('click', () => {
@@ -411,6 +460,7 @@
     </script>
 </body>
 </html>
+
 
 
 
