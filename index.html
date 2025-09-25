@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Licenčná a autorská evidencia - Oz Spoločnosť</title>
+    <!-- Použitie Inter fontu -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e; /* Temne fialová pre futuristický vzhľad */
+            color: #e0e0e0;
+        }
+    </style>
+    <!-- Webová ikona - teraz vložená priamo ako SVG pre lepšiu spoľahlivosť -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
+</head>
+<body class="p-8">
+
+    <!-- Prihlasovacia obrazovka -->
+    <div id="login-screen" class="flex flex-col items-center justify-center min-h-screen text-center">
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-lg w-full">
+            <h1 class="text-4xl font-bold mb-4 text-white">Vitaj, vývojár</h1>
+            <p class="text-lg text-gray-400 mb-6">Prosím, zadaj svoj prezývku pre prístup k systému.</p>
+            <input type="text" id="nickname-input" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tvoja prezývka..." required>
+            <button id="login-button" class="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg">
+                Prihlásiť sa
+            </button>
+        </div>
+    </div>
+
+    <!-- Hlavná aplikácia - spočiatku skrytá -->
+    <div id="app-screen" class="hidden">
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-extrabold text-white">Oz Spoločnosť</h1>
+            <p id="welcome-message" class="text-xl font-semibold mt-2 text-blue-300"></p>
+        </header>
+
+        <!-- Sekcia Zákonná licencia a Autorské práva -->
+        <div class="grid md:grid-cols-2 gap-8 mb-12">
+            <!-- Karta Zákonná licencia -->
+            <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+                <h2 class="text-2xl font-bold mb-4 text-blue-400">Zákonná licencia</h2>
+                <p class="text-gray-300 leading-relaxed">
+                    Zákonná licencia predstavuje právny rámec, ktorý chráni tvoju originálnu hudbu a diela.
+                    Tento popis slúži ako prehľad tvojich práv, ktoré máš ako autor. Ide o jasne definované pravidlá
+                    týkajúce sa používania, distribúcie a komerčného využívania tvojich diel. Vďaka tejto evidencii
+                    si môžeš ľahko zapísať, čo sa stalo s tvojou hudbou a chrániť si svoje autorské práva.
+                </p>
+            </div>
+            <!-- Karta Autorské práva -->
+            <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700">
+                <h2 class="text-2xl font-bold mb-4 text-blue-400">Autorské práva</h2>
+                <p class="text-gray-300 leading-relaxed">
+                    Autorské práva automaticky vznikajú v momente, keď vytvoríš originálne dielo. V našom prípade
+                    je to tvoja hudba. Zapisovaním a sledovaním copyrightových sťažností si chrániš svoju tvorbu
+                    pred neoprávneným použitím na platformách ako YouTube alebo iných. Tento systém ti pomôže
+                    dokumentovať každý prípad a zabezpečiť si, že tvoja práca je chránená a plne rešpektovaná.
+                </p>
+            </div>
+        </div>
+
+        <!-- Formulár pre pridanie záznamu -->
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl mb-12 border border-slate-700">
+            <h2 class="text-3xl font-bold mb-6 text-white text-center">Pridať nový záznam</h2>
+            <form id="copyright-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex flex-col">
+                    <label for="music-title-input" class="mb-2 font-semibold text-gray-400">Názov hudby:</label>
+                    <input type="text" id="music-title-input" class="p-3 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="napr. Moja skvelá pieseň" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="youtube-link-input" class="mb-2 font-semibold text-gray-400">Link na YouTube:</label>
+                    <input type="url" id="youtube-link-input" class="p-3 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="napr. https://youtu.be/..." required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="platform-input" class="mb-2 font-semibold text-gray-400">Platforma:</label>
+                    <input type="text" id="platform-input" class="p-3 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="napr. YouTube, TikTok" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="user-input" class="mb-2 font-semibold text-gray-400">Kanál / Používateľ:</label>
+                    <input type="text" id="user-input" class="p-3 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="napr. VideaRychlo" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="date-input" class="mb-2 font-semibold text-gray-400">Dátum sťažnosti:</label>
+                    <input type="date" id="date-input" class="p-3 rounded-xl bg-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="flex flex-col md:col-span-2">
+                    <label for="notes-input" class="mb-2 font-semibold text-gray-400">Poznámky:</label>
+                    <textarea id="notes-input" class="p-3 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Opis situácie, čo sa stalo, a pod."></textarea>
+                </div>
+                <div class="md:col-span-2 flex justify-center">
+                    <button type="submit" class="py-3 px-12 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors shadow-lg">
+                        Pridať záznam
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Zoznam záznamov -->
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
+            <h2 class="text-3xl font-bold mb-6 text-white text-center">Moje záznamy</h2>
+            <div id="entries-list" class="flex flex-col gap-4">
+                <!-- Záznamy sa dynamicky vložia sem -->
+            </div>
+            <p id="no-entries-message" class="text-center text-gray-400 mt-4 hidden">Zatiaľ nemáš žiadne záznamy. Začni pridávať!</p>
+        </div>
+    </div>
+
+    <script>
+        // Premenné pre prístup k DOM elementom
+        const loginScreen = document.getElementById('login-screen');
+        const appScreen = document.getElementById('app-screen');
+        const loginButton = document.getElementById('login-button');
+        const nicknameInput = document.getElementById('nickname-input');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const copyrightForm = document.getElementById('copyright-form');
+        const musicTitleInput = document.getElementById('music-title-input');
+        const youtubeLinkInput = document.getElementById('youtube-link-input');
+        const platformInput = document.getElementById('platform-input');
+        const userInput = document.getElementById('user-input');
+        const dateInput = document.getElementById('date-input');
+        const notesInput = document.getElementById('notes-input');
+        const entriesList = document.getElementById('entries-list');
+        const noEntriesMessage = document.getElementById('no-entries-message');
+
+        // Kľúč pre ukladanie údajov v localStorage
+        const STORAGE_KEY_NICKNAME = 'oz-app-nickname';
+        const STORAGE_KEY_ENTRIES = 'oz-app-entries';
+
+        // Inicializácia aplikácie po načítaní stránky
+        window.onload = function() {
+            // Skryjeme obe obrazovky a až potom zobrazíme tú správnu na základe stavu prihlásenia
+            loginScreen.classList.add('hidden');
+            appScreen.classList.add('hidden');
+            init();
+        };
+
+        function init() {
+            // Získanie prezývky z localStorage
+            const storedNickname = localStorage.getItem(STORAGE_KEY_NICKNAME);
+            if (storedNickname) {
+                // Ak je prezývka nájdená, zobrazíme hlavnú aplikáciu
+                showApp(storedNickname);
+            } else {
+                // Ak nie je nájdená, zobrazíme prihlasovaciu obrazovku
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            loginScreen.classList.remove('hidden');
+        }
+
+        function showApp(nickname) {
+            loginScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            welcomeMessage.textContent = `Vitaj späť, ${nickname}!`;
+            loadEntries();
+        }
+
+        // Spracovanie prihlásenia po kliknutí na tlačidlo
+        loginButton.addEventListener('click', () => {
+            const nickname = nicknameInput.value.trim();
+            if (nickname) {
+                localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
+                showApp(nickname);
+            } else {
+                nicknameInput.focus();
+            }
+        });
+
+        // Spracovanie odoslania formulára
+        copyrightForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const newEntry = {
+                musicTitle: musicTitleInput.value,
+                youtubeLink: youtubeLinkInput.value,
+                platform: platformInput.value,
+                user: userInput.value,
+                date: dateInput.value,
+                notes: notesInput.value
+            };
+
+            // Získanie existujúcich záznamov
+            const entries = getEntries();
+            entries.push(newEntry);
+            saveEntries(entries);
+            
+            // Vyčistenie formulára a opätovné vykreslenie zoznamu
+            copyrightForm.reset();
+            renderEntries(entries);
+        });
+
+        function getEntries() {
+            try {
+                // Skúsi získať záznamy z localStorage
+                const entriesJson = localStorage.getItem(STORAGE_KEY_ENTRIES);
+                return entriesJson ? JSON.parse(entriesJson) : [];
+            } catch (error) {
+                console.error("Chyba pri získavaní záznamov z localStorage:", error);
+                return [];
+            }
+        }
+
+        function saveEntries(entries) {
+            try {
+                // Uloží záznamy do localStorage ako JSON reťazec
+                localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(entries));
+            } catch (error) {
+                console.error("Chyba pri ukladaní záznamov do localStorage:", error);
+            }
+        }
+
+        function loadEntries() {
+            const entries = getEntries();
+            renderEntries(entries);
+        }
+
+        function renderEntries(entries) {
+            // Vyčistí existujúci zoznam
+            entriesList.innerHTML = '';
+            
+            if (entries.length === 0) {
+                noEntriesMessage.classList.remove('hidden');
+                return;
+            } else {
+                noEntriesMessage.classList.add('hidden');
+            }
+
+            // Vytvorí HTML pre každý záznam
+            entries.forEach((entry, index) => {
+                const entryElement = document.createElement('div');
+                entryElement.className = 'bg-slate-700 p-4 rounded-xl shadow flex justify-between items-start';
+                entryElement.innerHTML = `
+                    <div class="flex-grow">
+                        <p class="text-sm text-gray-400">Názov hudby: <span class="font-bold text-blue-300">${entry.musicTitle}</span></p>
+                        <p class="text-sm text-gray-400">Link na YouTube: <a href="${entry.youtubeLink}" target="_blank" class="font-bold text-blue-300 hover:underline transition-colors">${entry.youtubeLink}</a></p>
+                        <p class="text-sm text-gray-400">Platforma: <span class="font-bold text-blue-300">${entry.platform}</span></p>
+                        <p class="text-sm text-gray-400">Používateľ: <span class="font-bold text-white">${entry.user}</span></p>
+                        <p class="text-sm text-gray-400">Dátum: <span class="text-gray-300">${entry.date}</span></p>
+                        <p class="mt-2 text-sm text-gray-300 leading-relaxed">${entry.notes}</p>
+                    </div>
+                    <button class="delete-button text-red-400 hover:text-red-500 transition-colors p-2" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+                entriesList.appendChild(entryElement);
+            });
+            
+            // Pridanie poslucháča udalostí pre každé tlačidlo na zmazanie
+            document.querySelectorAll('.delete-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = e.currentTarget.dataset.index;
+                    const entries = getEntries();
+                    entries.splice(index, 1);
+                    saveEntries(entries);
+                    renderEntries(entries);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
