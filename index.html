@@ -305,8 +305,8 @@
             const nickname = nicknameInput.value.trim();
             if (nickname) {
                  localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
-                 // Firestore sa postará o overenie banu cez onSnapshot
-                 // Ak je používateľ zabanovaný, na to sa príde pri načítavaní cez onSnapshot, inak sa prihlási.
+                 // Nová, opravená časť, ktorá okamžite zobrazí aplikáciu
+                 showApp(nickname);
             } else {
                 nicknameInput.focus();
             }
