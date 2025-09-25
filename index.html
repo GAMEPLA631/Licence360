@@ -221,7 +221,6 @@
                 }
 
                 // Načítanie a overenie banov
-                // Oprava: Pridanie 'data' segmentu do cesty pre verejné bans
                 const banRef = doc(db, 'artifacts', appId, 'public', 'data', 'bans', storedNickname);
                 try {
                     const banDoc = await getDoc(banRef);
@@ -283,7 +282,6 @@
 
         // Sledujeme zmeny banov
         function subscribeToBans() {
-            // Oprava: Pridanie 'data' segmentu do cesty pre verejné bans
             const bansRef = collection(db, 'artifacts', appId, 'public', 'data', 'bans');
             onSnapshot(bansRef, (snapshot) => {
                 const bans = snapshot.docs.map(doc => doc.data());
@@ -496,6 +494,7 @@
     </script>
 </body>
 </html>
+
 
 
 
