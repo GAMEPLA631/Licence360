@@ -135,7 +135,12 @@
         </div>
     </div>
 
-    <script>
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
         // Premenné pre prístup k DOM elementom
         const loginScreen = document.getElementById('login-screen');
         const appScreen = document.getElementById('app-screen');
@@ -161,71 +166,70 @@
         const unbanButton = document.getElementById('unban-button');
         const banMessage = document.getElementById('ban-message');
         const currentUserInfo = document.getElementById('current-user-info');
-
+        
         // Kľúče pre ukladanie údajov v localStorage
         const STORAGE_KEY_NICKNAME = 'oz-app-nickname';
         const STORAGE_KEY_ENTRIES = 'oz-app-entries';
-        const STORAGE_KEY_BANS = 'oz-app-banned-users';
         const BAN_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 dni v milisekundách
         const ADMIN_NICKNAME = 'Oz Spoločenstvo';
 
         let currentNickname = '';
+        let isBannedState = false;
+
+        // Firestore a Auth
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const bansCollectionPath = `artifacts/${appId}/public/data/bannedUsers`;
 
         // Inicializácia aplikácie po načítaní stránky
-        window.onload = function() {
-            // Skryjeme obe obrazovky a až potom zobrazíme tú správnu na základe stavu prihlásenia
+        window.onload = async function() {
             loginScreen.classList.add('hidden');
             appScreen.classList.add('hidden');
-            init();
+            await init();
         };
 
-        function init() {
-            // Získanie prezývky z localStorage
+        async function init() {
             const storedNickname = localStorage.getItem(STORAGE_KEY_NICKNAME);
-            if (storedNickname) {
-                // Ak je prezývka nájdená, skontrolujeme, či nie je zabanovaná
-                if (isBanned(storedNickname)) {
-                    loginScreen.classList.remove('hidden');
-                    loginMessage.textContent = `Bol si zabanovaný. Skús sa prihlásiť znova za 3 dni.`;
-                    nicknameInput.disabled = true;
-                    loginButton.disabled = true;
-                    setTimeout(() => {
-                        window.location.reload(); // Znovu načíta stránku po uplynutí banu
-                    }, getBanDuration(storedNickname));
-                } else {
-                    // Ak nie je zabanovaná, zobrazíme hlavnú aplikáciu
-                    showApp(storedNickname);
-                }
+            
+            // Prihlásenie používateľa
+            const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            if (authToken) {
+                await signInWithCustomToken(auth, authToken);
             } else {
-                // Ak nie je nájdená, zobrazíme prihlasovaciu obrazovku
-                showLogin();
+                await signInAnonymously(auth);
             }
+            
+            // Reálne overenie stavu banu v reálnom čase z Firestore
+            onSnapshot(doc(db, bansCollectionPath, storedNickname || 'invalid-nickname'), (docSnapshot) => {
+                const banData = docSnapshot.data();
+                const isBannedLocally = banData && Date.now() < banData.expiry;
+                
+                if (storedNickname) {
+                    if (isBannedLocally) {
+                        isBannedState = true;
+                        showLogin();
+                        loginMessage.textContent = `Bol si zabanovaný. Skús sa prihlásiť znova neskôr.`;
+                        nicknameInput.disabled = true;
+                        loginButton.disabled = true;
+                    } else if (!isBannedLocally && isBannedState) {
+                        isBannedState = false;
+                        showApp(storedNickname);
+                    } else if (!isBannedState) {
+                         showApp(storedNickname);
+                    }
+                } else {
+                    isBannedState = false;
+                    showLogin();
+                }
+            });
         }
         
-        function isBanned(nickname) {
-            const bans = getBans();
-            if (bans[nickname]) {
-                const now = Date.now();
-                if (now < bans[nickname]) {
-                    return true;
-                } else {
-                    // Ban vypršal, odstránime ho
-                    delete bans[nickname];
-                    saveBans(bans);
-                    return false;
-                }
-            }
-            return false;
-        }
-
-        function getBanDuration(nickname) {
-            const bans = getBans();
-            const banExpiry = bans[nickname] || 0;
-            return Math.max(0, banExpiry - Date.now());
-        }
-
         function showLogin() {
             loginScreen.classList.remove('hidden');
+            appScreen.classList.add('hidden');
             loginMessage.textContent = `Prosím, zadaj svoj prezývku pre prístup k systému.`;
             nicknameInput.disabled = false;
             loginButton.disabled = false;
@@ -238,7 +242,6 @@
             welcomeMessage.textContent = `Vitaj späť, ${nickname}!`;
             currentUserInfo.textContent = `Prihlásený ako: ${nickname}`;
             
-            // Logika na zobrazenie alebo skrytie admin sekcie
             if (nickname === ADMIN_NICKNAME) {
                 adminSection.classList.remove('hidden');
             } else {
@@ -252,12 +255,9 @@
         loginButton.addEventListener('click', () => {
             const nickname = nicknameInput.value.trim();
             if (nickname) {
-                 if (isBanned(nickname)) {
-                    loginMessage.textContent = `Účet ${nickname} je zabanovaný. Skús to znova neskôr.`;
-                    return;
-                }
-                localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
-                showApp(nickname);
+                 localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
+                 // Firestore sa postará o overenie banu cez onSnapshot
+                 // Ak je používateľ zabanovaný, na to sa príde pri načítavaní cez onSnapshot, inak sa prihlási.
             } else {
                 nicknameInput.focus();
             }
@@ -265,10 +265,8 @@
         
         // Spracovanie odhlásenia
         logoutButton.addEventListener('click', () => {
-            // Odstránime prezývku z localStorage, ale ostatné dáta (záznamy, bany) ostanú
             localStorage.removeItem(STORAGE_KEY_NICKNAME);
-            // Znovu inicializujeme aplikáciu, čím sa zobrazí prihlasovacia obrazovka
-            init();
+            showLogin();
         });
 
 
@@ -285,42 +283,46 @@
                 notes: notesInput.value
             };
 
-            // Získanie existujúcich záznamov
             const entries = getEntries();
             entries.push(newEntry);
             saveEntries(entries);
             
-            // Vyčistenie formulára a opätovné vykreslenie zoznamu
             copyrightForm.reset();
             renderEntries(entries);
         });
 
         // Nová funkcia na banovanie používateľov
-        banButton.addEventListener('click', () => {
+        banButton.addEventListener('click', async () => {
             const nicknameToBan = banInput.value.trim();
             if (!nicknameToBan) {
                 banMessage.textContent = 'Prosím, zadaj prezývku, ktorú chceš zabanovať.';
-                banMessage.style.color = '#f87171'; // Červená farba
+                banMessage.style.color = '#f87171';
                 return;
             }
 
             if (nicknameToBan === currentNickname) {
                 banMessage.textContent = 'Nemôžeš zabanovať sám seba!';
-                banMessage.style.color = '#f87171'; // Červená farba
+                banMessage.style.color = '#f87171';
                 return;
             }
 
-            const bans = getBans();
-            bans[nicknameToBan] = Date.now() + BAN_DURATION_MS;
-            saveBans(bans);
-
-            banMessage.textContent = `Účet ${nicknameToBan} bol úspešne zabanovaný na 3 dni.`;
-            banMessage.style.color = '#34d399'; // Zelená farba
+            try {
+                const docRef = doc(db, bansCollectionPath, nicknameToBan);
+                await setDoc(docRef, {
+                    expiry: Date.now() + BAN_DURATION_MS
+                });
+                banMessage.textContent = `Účet ${nicknameToBan} bol úspešne zabanovaný.`;
+                banMessage.style.color = '#34d399';
+            } catch (error) {
+                console.error("Chyba pri banovaní používateľa:", error);
+                banMessage.textContent = 'Chyba pri banovaní, skús to znova.';
+                banMessage.style.color = '#f87171';
+            }
             banInput.value = '';
         });
 
         // Nová funkcia na odbanovanie používateľov
-        unbanButton.addEventListener('click', () => {
+        unbanButton.addEventListener('click', async () => {
             const nicknameToUnban = banInput.value.trim();
             if (!nicknameToUnban) {
                 banMessage.textContent = 'Prosím, zadaj prezývku, ktorú chceš odbanovať.';
@@ -328,14 +330,14 @@
                 return;
             }
 
-            const bans = getBans();
-            if (bans[nicknameToUnban]) {
-                delete bans[nicknameToUnban];
-                saveBans(bans);
+            try {
+                const docRef = doc(db, bansCollectionPath, nicknameToUnban);
+                await deleteDoc(docRef);
                 banMessage.textContent = `Účet ${nicknameToUnban} bol úspešne odbanovaný.`;
                 banMessage.style.color = '#34d399';
-            } else {
-                banMessage.textContent = `Účet ${nicknameToUnban} nie je zabanovaný.`;
+            } catch (error) {
+                console.error("Chyba pri odbanovaní používateľa:", error);
+                banMessage.textContent = 'Chyba pri odbanovaní, skús to znova.';
                 banMessage.style.color = '#f87171';
             }
             banInput.value = '';
@@ -344,7 +346,6 @@
 
         function getEntries() {
             try {
-                // Skúsi získať záznamy z localStorage
                 const entriesJson = localStorage.getItem(STORAGE_KEY_ENTRIES);
                 return entriesJson ? JSON.parse(entriesJson) : [];
             } catch (error) {
@@ -355,7 +356,6 @@
 
         function saveEntries(entries) {
             try {
-                // Uloží záznamy do localStorage ako JSON reťazec
                 localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(entries));
             } catch (error) {
                 console.error("Chyba pri ukladaní záznamov do localStorage:", error);
@@ -367,26 +367,7 @@
             renderEntries(entries);
         }
 
-        function getBans() {
-            try {
-                const bansJson = localStorage.getItem(STORAGE_KEY_BANS);
-                return bansJson ? JSON.parse(bansJson) : {};
-            } catch (error) {
-                console.error("Chyba pri získavaní banov z localStorage:", error);
-                return {};
-            }
-        }
-
-        function saveBans(bans) {
-            try {
-                localStorage.setItem(STORAGE_KEY_BANS, JSON.stringify(bans));
-            } catch (error) {
-                console.error("Chyba pri ukladaní banov do localStorage:", error);
-            }
-        }
-
         function renderEntries(entries) {
-            // Vyčistí existujúci zoznam
             entriesList.innerHTML = '';
             
             if (entries.length === 0) {
@@ -396,7 +377,6 @@
                 noEntriesMessage.classList.add('hidden');
             }
 
-            // Vytvorí HTML pre každý záznam
             entries.forEach((entry, index) => {
                 const entryElement = document.createElement('div');
                 entryElement.className = 'bg-slate-700 p-4 rounded-xl shadow flex justify-between items-start';
@@ -418,7 +398,6 @@
                 entriesList.appendChild(entryElement);
             });
             
-            // Pridanie poslucháča udalostí pre každé tlačidlo na zmazanie
             document.querySelectorAll('.delete-button').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const index = e.currentTarget.dataset.index;
@@ -432,6 +411,7 @@
     </script>
 </body>
 </html>
+
 
 
 
