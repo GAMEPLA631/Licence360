@@ -26,7 +26,7 @@
     <div id="login-screen" class="flex flex-col items-center justify-center min-h-screen text-center">
         <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-lg w-full">
             <h1 class="text-4xl font-bold mb-4 text-white">Vitaj, vývojár</h1>
-            <p class="text-lg text-gray-400 mb-6">Prosím, zadaj svoj prezývku pre prístup k systému.</p>
+            <p id="login-message" class="text-lg text-gray-400 mb-6">Prosím, zadaj svoj prezývku pre prístup k systému.</p>
             <input type="text" id="nickname-input" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tvoja prezývka..." required>
             <button id="login-button" class="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg">
                 Prihlásiť sa
@@ -109,6 +109,20 @@
             </div>
             <p id="no-entries-message" class="text-center text-gray-400 mt-4 hidden">Zatiaľ nemáš žiadne záznamy. Začni pridávať!</p>
         </div>
+
+        <!-- Správa banovaných účtov - viditeľné len pre administrátora -->
+        <div id="admin-section" class="bg-slate-800 p-8 rounded-2xl shadow-xl mt-12 border border-slate-700 hidden">
+            <h2 class="text-3xl font-bold mb-6 text-white text-center">Správa účtov</h2>
+            <p id="current-user-info" class="text-center text-gray-400 mb-4"></p>
+            <div class="flex flex-col items-center">
+                <label for="ban-input" class="mb-2 font-semibold text-gray-400">Prezývka na zabanovanie:</label>
+                <input type="text" id="ban-input" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Zadaj prezývku...">
+                <button id="ban-button" class="w-full py-3 px-6 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg">
+                    Zabanovať účet na 3 dni
+                </button>
+                <p id="ban-message" class="mt-4 text-center text-sm font-semibold"></p>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -127,10 +141,23 @@
         const notesInput = document.getElementById('notes-input');
         const entriesList = document.getElementById('entries-list');
         const noEntriesMessage = document.getElementById('no-entries-message');
+        const loginMessage = document.getElementById('login-message');
+        
+        // Nové premenné pre funkciu banovania
+        const adminSection = document.getElementById('admin-section');
+        const banInput = document.getElementById('ban-input');
+        const banButton = document.getElementById('ban-button');
+        const banMessage = document.getElementById('ban-message');
+        const currentUserInfo = document.getElementById('current-user-info');
 
-        // Kľúč pre ukladanie údajov v localStorage
+        // Kľúče pre ukladanie údajov v localStorage
         const STORAGE_KEY_NICKNAME = 'oz-app-nickname';
         const STORAGE_KEY_ENTRIES = 'oz-app-entries';
+        const STORAGE_KEY_BANS = 'oz-app-banned-users';
+        const BAN_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 dni v milisekundách
+        const ADMIN_NICKNAME = 'Oz Spoločenstvo';
+
+        let currentNickname = '';
 
         // Inicializácia aplikácie po načítaní stránky
         window.onload = function() {
@@ -144,22 +171,68 @@
             // Získanie prezývky z localStorage
             const storedNickname = localStorage.getItem(STORAGE_KEY_NICKNAME);
             if (storedNickname) {
-                // Ak je prezývka nájdená, zobrazíme hlavnú aplikáciu
-                showApp(storedNickname);
+                // Ak je prezývka nájdená, skontrolujeme, či nie je zabanovaná
+                if (isBanned(storedNickname)) {
+                    loginScreen.classList.remove('hidden');
+                    loginMessage.textContent = `Bol si zabanovaný. Skús sa prihlásiť znova za 3 dni.`;
+                    nicknameInput.disabled = true;
+                    loginButton.disabled = true;
+                    setTimeout(() => {
+                        window.location.reload(); // Znovu načíta stránku po uplynutí banu
+                    }, getBanDuration(storedNickname));
+                } else {
+                    // Ak nie je zabanovaná, zobrazíme hlavnú aplikáciu
+                    showApp(storedNickname);
+                }
             } else {
                 // Ak nie je nájdená, zobrazíme prihlasovaciu obrazovku
                 showLogin();
             }
         }
+        
+        function isBanned(nickname) {
+            const bans = getBans();
+            if (bans[nickname]) {
+                const now = Date.now();
+                if (now < bans[nickname]) {
+                    return true;
+                } else {
+                    // Ban vypršal, odstránime ho
+                    delete bans[nickname];
+                    saveBans(bans);
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        function getBanDuration(nickname) {
+            const bans = getBans();
+            const banExpiry = bans[nickname] || 0;
+            return Math.max(0, banExpiry - Date.now());
+        }
 
         function showLogin() {
             loginScreen.classList.remove('hidden');
+            loginMessage.textContent = `Prosím, zadaj svoj prezývku pre prístup k systému.`;
+            nicknameInput.disabled = false;
+            loginButton.disabled = false;
         }
 
         function showApp(nickname) {
+            currentNickname = nickname;
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
             welcomeMessage.textContent = `Vitaj späť, ${nickname}!`;
+            currentUserInfo.textContent = `Prihlásený ako: ${nickname}`;
+            
+            // Logika na zobrazenie alebo skrytie admin sekcie
+            if (nickname === ADMIN_NICKNAME) {
+                adminSection.classList.remove('hidden');
+            } else {
+                adminSection.classList.add('hidden');
+            }
+
             loadEntries();
         }
 
@@ -167,6 +240,10 @@
         loginButton.addEventListener('click', () => {
             const nickname = nicknameInput.value.trim();
             if (nickname) {
+                 if (isBanned(nickname)) {
+                    loginMessage.textContent = `Účet ${nickname} je zabanovaný. Skús to znova neskôr.`;
+                    return;
+                }
                 localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
                 showApp(nickname);
             } else {
@@ -197,6 +274,30 @@
             renderEntries(entries);
         });
 
+        // Nová funkcia na banovanie používateľov
+        banButton.addEventListener('click', () => {
+            const nicknameToBan = banInput.value.trim();
+            if (!nicknameToBan) {
+                banMessage.textContent = 'Prosím, zadaj prezývku, ktorú chceš zabanovať.';
+                banMessage.style.color = '#f87171'; // Červená farba
+                return;
+            }
+
+            if (nicknameToBan === currentNickname) {
+                banMessage.textContent = 'Nemôžeš zabanovať sám seba!';
+                banMessage.style.color = '#f87171'; // Červená farba
+                return;
+            }
+
+            const bans = getBans();
+            bans[nicknameToBan] = Date.now() + BAN_DURATION_MS;
+            saveBans(bans);
+
+            banMessage.textContent = `Účet ${nicknameToBan} bol úspešne zabanovaný na 3 dni.`;
+            banMessage.style.color = '#34d399'; // Zelená farba
+            banInput.value = '';
+        });
+
         function getEntries() {
             try {
                 // Skúsi získať záznamy z localStorage
@@ -220,6 +321,24 @@
         function loadEntries() {
             const entries = getEntries();
             renderEntries(entries);
+        }
+
+        function getBans() {
+            try {
+                const bansJson = localStorage.getItem(STORAGE_KEY_BANS);
+                return bansJson ? JSON.parse(bansJson) : {};
+            } catch (error) {
+                console.error("Chyba pri získavaní banov z localStorage:", error);
+                return {};
+            }
+        }
+
+        function saveBans(bans) {
+            try {
+                localStorage.setItem(STORAGE_KEY_BANS, JSON.stringify(bans));
+            } catch (error) {
+                console.error("Chyba pri ukladaní banov do localStorage:", error);
+            }
         }
 
         function renderEntries(entries) {
@@ -269,3 +388,5 @@
     </script>
 </body>
 </html>
+
+
