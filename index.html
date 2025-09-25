@@ -22,15 +22,44 @@
 </head>
 <body class="p-8">
 
-    <!-- Prihlasovacia obrazovka -->
-    <div id="login-screen" class="flex flex-col items-center justify-center min-h-screen text-center">
+    <!-- Prihlasovacia a registračná obrazovka -->
+    <div id="auth-screen" class="flex flex-col items-center justify-center min-h-screen text-center">
         <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-lg w-full">
-            <h1 class="text-4xl font-bold mb-4 text-white">Vitaj, vývojár</h1>
-            <p id="login-message" class="text-lg text-gray-400 mb-6">Prosím, zadaj svoj prezývku pre prístup k systému.</p>
-            <input type="text" id="nickname-input" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tvoja prezývka..." required>
-            <button id="login-button" class="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg">
-                Prihlásiť sa
-            </button>
+            <div id="auth-tabs" class="flex justify-around mb-6">
+                <button id="login-tab" class="py-2 px-4 text-white font-semibold rounded-xl transition-colors">
+                    Prihlásenie
+                </button>
+                <button id="register-tab" class="py-2 px-4 text-gray-400 font-semibold rounded-xl transition-colors">
+                    Registrácia
+                </button>
+            </div>
+
+            <!-- Prihlasovací formulár -->
+            <form id="login-form" class="auth-form">
+                <h1 class="text-4xl font-bold mb-4 text-white">Prihlásenie</h1>
+                <p id="login-message" class="text-lg text-gray-400 mb-6">Použi svoj email a heslo na prihlásenie.</p>
+                <input type="email" id="login-email" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tvoj email..." required>
+                <input type="password" id="login-password" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tvoje heslo..." required>
+                <button type="submit" class="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg">
+                    Prihlásiť sa
+                </button>
+                <p id="login-error" class="mt-4 text-sm text-red-400"></p>
+                <p id="login-success" class="mt-4 text-sm font-semibold text-green-400 hidden"></p>
+            </form>
+
+            <!-- Registračný formulár -->
+            <form id="register-form" class="auth-form hidden">
+                <h1 class="text-4xl font-bold mb-4 text-white">Registrácia</h1>
+                <p id="register-message" class="text-lg text-gray-400 mb-6">Vyplň údaje a zadaj kód umelca pre prístup. (Akýkoľvek kód, ktorý zadáš, bude jedinečný len pre teba)</p>
+                <input type="text" id="register-nickname" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tvoja prezývka..." required>
+                <input type="email" id="register-email" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tvoj email..." required>
+                <input type="password" id="register-password" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tvoje heslo (min. 6 znakov)..." required>
+                <input type="text" id="artist-code-input" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Kód umelca..." required>
+                <button type="submit" class="w-full py-3 px-6 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors shadow-lg">
+                    Registrovať sa
+                </button>
+                <p id="register-error" class="mt-4 text-sm text-red-400"></p>
+            </form>
         </div>
     </div>
 
@@ -146,30 +175,25 @@
         </div>
     </div>
 
-    <!-- Firebase SDK Imports -->
-    <script type="module">
-        import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, query, where, onSnapshot, getDocs, deleteDoc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+    <script>
+        // *** Dôležité upozornenie: Táto aplikácia používa localStorage, čo nie je bezpečné pre produkčné prostredie.
+        // Dáta sa ukladajú v prehliadači a nie sú šifrované. ***
 
-        // Firebase konfigurácia, poskytnutá z prostredia
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const ADMIN_EMAIL = 'admin@example.com';
 
-        // Nastaví úroveň logovania na "silent" (ticho), aby sa v konzole neukazovali žiadne správy
-        setLogLevel('silent');
-
-        // Inicializácia Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
         // Premenné pre prístup k DOM elementom
-        const loginScreen = document.getElementById('login-screen');
+        const authScreen = document.getElementById('auth-screen');
         const appScreen = document.getElementById('app-screen');
-        const loginButton = document.getElementById('login-button');
-        const nicknameInput = document.getElementById('nickname-input');
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const loginEmailInput = document.getElementById('login-email');
+        const loginPasswordInput = document.getElementById('login-password');
+        const registerNicknameInput = document.getElementById('register-nickname');
+        const registerEmailInput = document.getElementById('register-email');
+        const registerPasswordInput = document.getElementById('register-password');
+        const artistCodeInput = document.getElementById('artist-code-input');
         const welcomeMessage = document.getElementById('welcome-message');
         const logoutButton = document.getElementById('logout-button');
         const copyrightForm = document.getElementById('copyright-form');
@@ -181,8 +205,10 @@
         const notesInput = document.getElementById('notes-input');
         const entriesList = document.getElementById('entries-list');
         const noEntriesMessage = document.getElementById('no-entries-message');
-        const loginMessage = document.getElementById('login-message');
         const formMessage = document.getElementById('form-message');
+        const loginError = document.getElementById('login-error');
+        const registerError = document.getElementById('register-error');
+        const loginSuccess = document.getElementById('login-success'); // Nový element
         const adminSection = document.getElementById('admin-section');
         const banInput = document.getElementById('ban-input');
         const banButton = document.getElementById('ban-button');
@@ -190,132 +216,183 @@
         const banMessage = document.getElementById('ban-message');
         const currentUserInfo = document.getElementById('current-user-info');
         const bannedUsersList = document.getElementById('banned-users-list');
-        
-        // Globálne premenné
-        const STORAGE_KEY_NICKNAME = 'oz-app-nickname';
+
+        const USERS_STORAGE_KEY = 'oz-app-users';
+        const ENTRIES_STORAGE_KEY_PREFIX = 'oz-app-entries-';
+        const BANS_STORAGE_KEY = 'oz-app-bans';
+        const CURRENT_USER_STORAGE_KEY = 'oz-app-current-user';
         const BAN_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
-        const ADMIN_NICKNAME = 'Oz Spoločenstvo';
-        let currentNickname = '';
-        let userId = null;
 
-        // Funkcia na overenie prihlásenia a banov
-        async function checkAuthState() {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Firebase Auth chyba:", error);
-                return;
+        // Simulácia hashovania hesla
+        function hashPassword(password) {
+            return btoa(password);
+        }
+
+        // Načítanie všetkých používateľov z lokálneho úložiska
+        function getUsers() {
+            const users = localStorage.getItem(USERS_STORAGE_KEY);
+            return users ? JSON.parse(users) : [];
+        }
+
+        // Uloženie všetkých používateľov do lokálneho úložiska
+        function saveUsers(users) {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+        }
+
+        // Funkcia na prepínanie medzi prihlásením a registráciou
+        function showForm(formId) {
+            loginForm.classList.add('hidden');
+            registerForm.classList.add('hidden');
+            document.getElementById(formId).classList.remove('hidden');
+
+            loginTab.classList.remove('text-white', 'border-b-2', 'border-white');
+            registerTab.classList.remove('text-white', 'border-b-2', 'border-white');
+
+            if (formId === 'login-form') {
+                loginTab.classList.add('text-white', 'border-b-2', 'border-white');
+                registerTab.classList.add('text-gray-400');
+            } else {
+                registerTab.classList.add('text-white', 'border-b-2', 'border-white');
+                loginTab.classList.add('text-gray-400');
             }
+            loginError.textContent = '';
+            registerError.textContent = '';
+            loginSuccess.classList.add('hidden'); // Skrytie správy o úspešnom prihlásení pri prepínaní
+        }
 
-            auth.onAuthStateChanged(async (user) => {
-                const storedNickname = localStorage.getItem(STORAGE_KEY_NICKNAME);
-                userId = user ? user.uid : null;
+        loginTab.addEventListener('click', () => showForm('login-form'));
+        registerTab.addEventListener('click', () => showForm('register-form'));
 
-                if (!storedNickname || !userId) {
-                    showLogin();
+        // Funkcia na vykreslenie aplikácie
+        function renderApp() {
+            const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_STORAGE_KEY));
+            if (currentUser) {
+                // Skontrolujeme, či nie je používateľ zabanovaný
+                const bans = JSON.parse(localStorage.getItem(BANS_STORAGE_KEY) || '{}');
+                const ban = bans[currentUser.nickname];
+
+                if (ban && ban.expiry > Date.now()) {
+                    localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+                    showAuthScreen();
+                    loginError.textContent = `Tvoj účet je zabanovaný. Skús to prosím znova neskôr.`;
                     return;
                 }
 
-                // Načítanie a overenie banov
-                const banRef = doc(db, 'artifacts', appId, 'public', 'data', 'bans', storedNickname);
-                try {
-                    const banDoc = await getDoc(banRef);
-                    if (banDoc.exists()) {
-                        const banData = banDoc.data();
-                        if (banData.expiry > Date.now()) {
-                            showLogin(`Bol si zabanovaný. Skús sa prihlásiť znova neskôr. (ID: ${userId})`);
-                            localStorage.removeItem(STORAGE_KEY_NICKNAME);
-                            return;
-                        }
-                    }
-                } catch (error) {
-                    console.error("Chyba pri načítaní banov:", error);
-                }
-
-                currentNickname = storedNickname;
-                showApp();
-            });
+                showAppScreen(currentUser);
+                renderEntries(currentUser.email);
+                renderBannedUsers();
+            } else {
+                showAuthScreen();
+            }
         }
 
         // Zobrazí prihlasovaciu obrazovku
-        function showLogin(message = 'Prosím, zadaj svoj prezývku pre prístup k systému.') {
-            loginScreen.classList.remove('hidden');
+        function showAuthScreen() {
+            authScreen.classList.remove('hidden');
             appScreen.classList.add('hidden');
-            loginMessage.textContent = message;
-            nicknameInput.disabled = false;
-            loginButton.disabled = false;
         }
 
         // Zobrazí hlavnú aplikáciu
-        function showApp() {
-            loginScreen.classList.add('hidden');
+        function showAppScreen(user) {
+            authScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
-            welcomeMessage.textContent = `Vitaj späť, ${currentNickname}! (ID: ${userId})`;
-            currentUserInfo.textContent = `Prihlásený ako: ${currentNickname}`;
+            welcomeMessage.textContent = `Vitaj späť, ${user.nickname}!`;
+            currentUserInfo.textContent = `Prihlásený ako: ${user.nickname}`;
             
-            if (currentNickname === ADMIN_NICKNAME) {
+            if (user.email === ADMIN_EMAIL) {
                 adminSection.classList.remove('hidden');
             } else {
                 adminSection.classList.add('hidden');
             }
-            
-            // Re-render
-            subscribeToEntries();
-            subscribeToBans();
-        }
-
-        // Sledujeme zmeny záznamov
-        function subscribeToEntries() {
-            const entriesRef = collection(db, `/artifacts/${appId}/users/${userId}/entries`);
-            onSnapshot(entriesRef, (snapshot) => {
-                const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderEntries(entries);
-            }, (error) => {
-                console.error("Chyba pri sledovaní záznamov:", error);
-                entriesList.innerHTML = `<p class="text-center text-red-400">Chyba pri načítaní záznamov. Skúste to prosím znova.</p>`;
-            });
-        }
-
-        // Sledujeme zmeny banov
-        function subscribeToBans() {
-            const bansRef = collection(db, 'artifacts', appId, 'public', 'data', 'bans');
-            onSnapshot(bansRef, (snapshot) => {
-                const bans = snapshot.docs.map(doc => doc.data());
-                renderBannedUsers(bans);
-            }, (error) => {
-                console.error("Chyba pri sledovaní banov:", error);
-                bannedUsersList.innerHTML = `<p class="text-center text-red-400">Chyba pri načítaní banov.</p>`;
-            });
         }
         
-        // Prihlásenie
-        loginButton.addEventListener('click', () => {
-            const nickname = nicknameInput.value.trim();
-            if (nickname) {
-                localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
-                checkAuthState();
+        // Registračná funkcia
+        registerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            registerError.textContent = '';
+            
+            const nickname = registerNicknameInput.value.trim();
+            const email = registerEmailInput.value.trim();
+            const password = registerPasswordInput.value.trim(); // Odstránenie medzier
+            const artistCode = artistCodeInput.value.trim();
+
+            const users = getUsers();
+            
+            // Kontrola, či už neexistuje účet s rovnakým emailom
+            const existingUserByEmail = users.find(u => u.email === email);
+            if (existingUserByEmail) {
+                registerError.textContent = 'Účet s týmto emailom už existuje.';
+                return;
+            }
+
+            // Kontrola, či už neexistuje účet s rovnakým kódom umelca
+            const existingUserByCode = users.find(u => u.artistCode === artistCode);
+            if (existingUserByCode) {
+                registerError.textContent = 'Tento kód umelca už niekto použil. Zvoľ si prosím iný.';
+                return;
+            }
+
+            if (password.length < 6) {
+                registerError.textContent = 'Heslo je príliš slabé. Použi aspoň 6 znakov.';
+                return;
+            }
+
+            const newUser = {
+                nickname,
+                email,
+                passwordHash: hashPassword(password),
+                artistCode: artistCode, // Uloženie zvoleného kódu umelca
+                created_at: Date.now()
+            };
+            
+            users.push(newUser);
+            saveUsers(users);
+
+            localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(newUser));
+            renderApp();
+            showForm('login-form');
+        });
+
+        // Prihlasovacia funkcia
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginError.textContent = '';
+            loginSuccess.classList.add('hidden'); // Skryjeme správu o úspešnom prihlásení
+
+            const email = loginEmailInput.value.trim();
+            const password = loginPasswordInput.value.trim(); // Odstránenie medzier
+
+            const users = getUsers();
+            const user = users.find(u => u.email === email);
+
+            if (user && user.passwordHash === hashPassword(password)) {
+                localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+                
+                // Zobrazenie správy o úspešnom prihlásení na 1.5 sekundy
+                loginSuccess.textContent = 'Úspešné prihlásenie!';
+                loginSuccess.classList.remove('hidden');
+                setTimeout(() => {
+                    renderApp();
+                }, 1500);
+                
             } else {
-                nicknameInput.focus();
+                loginError.textContent = 'Nesprávny email alebo heslo. Skús to znova.';
             }
         });
         
         // Odhlásenie
-        logoutButton.addEventListener('click', async () => {
-            localStorage.removeItem(STORAGE_KEY_NICKNAME);
-            await auth.signOut();
-            showLogin();
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+            renderApp();
         });
 
         // Odoslanie formulára
-        copyrightForm.addEventListener('submit', async (e) => {
+        copyrightForm.addEventListener('submit', (e) => {
             e.preventDefault();
             formMessage.textContent = '';
             
-            if (!userId) {
+            const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_STORAGE_KEY));
+            if (!currentUser) {
                 formMessage.textContent = "Pre pridanie záznamu sa musíš prihlásiť.";
                 formMessage.style.color = '#f87171';
                 return;
@@ -329,32 +406,31 @@
                 return;
             }
 
-            const entriesRef = collection(db, `/artifacts/${appId}/users/${userId}/entries`);
+            const entriesKey = ENTRIES_STORAGE_KEY_PREFIX + currentUser.email;
+            const entries = JSON.parse(localStorage.getItem(entriesKey) || '[]');
+            
             const newEntry = {
+                id: Date.now().toString(), // Jedinečné ID pre lokálne úložisko
                 music_title: musicTitleInput.value,
                 youtube_link: youtubeLinkInput.value.trim(),
                 platform: platformInput.value,
                 user_nickname: userInput.value,
                 date: dateInput.value,
                 notes: notesInput.value,
-                user_id: userId,
                 created_at: Date.now()
             };
 
-            try {
-                await addDoc(entriesRef, newEntry);
-                copyrightForm.reset();
-                formMessage.textContent = 'Záznam úspešne pridaný!';
-                formMessage.style.color = '#34d399';
-            } catch (error) {
-                console.error("Chyba pri pridávaní záznamu:", error);
-                formMessage.textContent = 'Nepodarilo sa pridať záznam. Skús to prosím znova.';
-                formMessage.style.color = '#f87171';
-            }
+            entries.push(newEntry);
+            localStorage.setItem(entriesKey, JSON.stringify(entries));
+
+            copyrightForm.reset();
+            formMessage.textContent = 'Záznam úspešne pridaný!';
+            formMessage.style.color = '#34d399';
+            renderEntries(currentUser.email);
         });
 
         // Banovanie používateľa (len pre admina)
-        banButton.addEventListener('click', async () => {
+        banButton.addEventListener('click', () => {
             const nicknameToBan = banInput.value.trim();
             if (!nicknameToBan) {
                 banMessage.textContent = 'Prosím, zadaj prezývku, ktorú chceš zabanovať.';
@@ -362,31 +438,28 @@
                 return;
             }
 
-            if (nicknameToBan === currentNickname) {
+            const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_STORAGE_KEY));
+            if (currentUser && nicknameToBan === currentUser.nickname) {
                 banMessage.textContent = 'Nemôžeš zabanovať sám seba!';
                 banMessage.style.color = '#f87171';
                 return;
             }
             
-            // Oprava: Pridanie 'data' segmentu do cesty pre verejné bans
-            const banRef = doc(db, 'artifacts', appId, 'public', 'data', 'bans', nicknameToBan);
-            try {
-                await setDoc(banRef, {
-                    nickname: nicknameToBan,
-                    expiry: Date.now() + BAN_DURATION_MS
-                });
-                banMessage.textContent = `Účet ${nicknameToBan} bol úspešne zabanovaný.`;
-                banMessage.style.color = '#34d399';
-            } catch (error) {
-                console.error("Chyba pri banovaní používateľa:", error);
-                banMessage.textContent = 'Chyba pri banovaní, skús to znova.';
-                banMessage.style.color = '#f87171';
-            }
+            const bans = JSON.parse(localStorage.getItem(BANS_STORAGE_KEY) || '{}');
+            bans[nicknameToBan] = {
+                nickname: nicknameToBan,
+                expiry: Date.now() + BAN_DURATION_MS
+            };
+            localStorage.setItem(BANS_STORAGE_KEY, JSON.stringify(bans));
+            renderBannedUsers();
+
+            banMessage.textContent = `Účet ${nicknameToBan} bol úspešne zabanovaný.`;
+            banMessage.style.color = '#34d399';
             banInput.value = '';
         });
 
         // Odbanovanie používateľa
-        unbanButton.addEventListener('click', async () => {
+        unbanButton.addEventListener('click', () => {
             const nicknameToUnban = banInput.value.trim();
             if (!nicknameToUnban) {
                 banMessage.textContent = 'Prosím, zadaj prezývku, ktorú chceš odbanovať.';
@@ -394,23 +467,21 @@
                 return;
             }
             
-            // Oprava: Pridanie 'data' segmentu do cesty pre verejné bans
-            const banRef = doc(db, 'artifacts', appId, 'public', 'data', 'bans', nicknameToUnban);
-            try {
-                await deleteDoc(banRef);
-                banMessage.textContent = `Účet ${nicknameToUnban} bol úspešne odbanovaný.`;
-                banMessage.style.color = '#34d399';
-            } catch (error) {
-                console.error("Chyba pri odbanovaní používateľa:", error);
-                banMessage.textContent = 'Chyba pri odbanovaní, skús to znova.';
-                banMessage.style.color = '#f87171';
-            }
+            const bans = JSON.parse(localStorage.getItem(BANS_STORAGE_KEY) || '{}');
+            delete bans[nicknameToUnban];
+            localStorage.setItem(BANS_STORAGE_KEY, JSON.stringify(bans));
+            renderBannedUsers();
+
+            banMessage.textContent = `Účet ${nicknameToUnban} bol úspešne odbanovaný.`;
+            banMessage.style.color = '#34d399';
             banInput.value = '';
         });
 
         // Vykreslenie záznamov
-        function renderEntries(entries) {
+        function renderEntries(email) {
             entriesList.innerHTML = '';
+            const entriesKey = ENTRIES_STORAGE_KEY_PREFIX + email;
+            const entries = JSON.parse(localStorage.getItem(entriesKey) || '[]');
             
             if (entries.length === 0) {
                 noEntriesMessage.classList.remove('hidden');
@@ -437,7 +508,7 @@
                             <p class="text-sm text-gray-400">Dátum: <span class="text-gray-300">${entry.date}</span></p>
                             <p class="mt-2 text-sm text-gray-300 leading-relaxed">${entry.notes}</p>
                         </div>
-                        <button class="delete-button text-red-400 hover:text-red-500 transition-colors p-2" data-id="${entry.id}">
+                        <button class="delete-button text-red-400 hover:text-red-500 transition-colors p-2" data-id="${entry.id}" data-user-email="${email}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                               <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
                             </svg>
@@ -447,25 +518,27 @@
                 });
                 
                 document.querySelectorAll('.delete-button').forEach(button => {
-                    button.addEventListener('click', async (e) => {
+                    button.addEventListener('click', (e) => {
                         const entryId = e.currentTarget.dataset.id;
-                        const entryRef = doc(db, `/artifacts/${appId}/users/${userId}/entries`, entryId);
-                        try {
-                            await deleteDoc(entryRef);
-                        } catch (error) {
-                            console.error("Chyba pri mazaní záznamu:", error);
-                            formMessage.textContent = 'Nepodarilo sa vymazať záznam. Skús to prosím znova.';
-                            formMessage.style.color = '#f87171';
-                        }
+                        const userEmail = e.currentTarget.dataset.user-email;
+                        const entriesKey = ENTRIES_STORAGE_KEY_PREFIX + userEmail;
+                        const entries = JSON.parse(localStorage.getItem(entriesKey) || '[]');
+                        
+                        const updatedEntries = entries.filter(entry => entry.id !== entryId);
+                        localStorage.setItem(entriesKey, JSON.stringify(updatedEntries));
+
+                        renderEntries(userEmail);
                     });
                 });
             }
         }
         
         // Vykreslenie banovaných účtov
-        function renderBannedUsers(users) {
+        function renderBannedUsers() {
             bannedUsersList.innerHTML = '';
-            const activeBans = users.filter(user => user.expiry > Date.now());
+            const bans = JSON.parse(localStorage.getItem(BANS_STORAGE_KEY) || '{}');
+            const activeBans = Object.values(bans).filter(user => user.expiry > Date.now());
+
             if (activeBans.length === 0) {
                 bannedUsersList.innerHTML = '<p class="text-center text-gray-400">Žiadne zabanované účty.</p>';
             } else {
@@ -488,9 +561,10 @@
                 });
             }
         }
-        
-        // Inicializácia pri načítaní stránky
-        checkAuthState();
+
+        // Inicializácia aplikácie
+        document.addEventListener('DOMContentLoaded', renderApp);
+        showForm('login-form');
     </script>
 </body>
 </html>
