@@ -103,6 +103,8 @@
                         Pridať záznam
                     </button>
                 </div>
+                <!-- Správa o chybe pre formulár -->
+                <p id="form-message" class="mt-4 text-center text-sm font-semibold md:col-span-2"></p>
             </form>
         </div>
 
@@ -146,9 +148,22 @@
 
     <!-- Firebase SDK Imports -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, where, onSnapshot, getDocs, deleteDoc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+        // Firebase konfigurácia, poskytnutá z prostredia
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Nastaví úroveň logovania na "silent" (ticho), aby sa v konzole neukazovali žiadne správy
+        setLogLevel('silent');
+
+        // Inicializácia Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
         
         // Premenné pre prístup k DOM elementom
         const loginScreen = document.getElementById('login-screen');
@@ -167,8 +182,7 @@
         const entriesList = document.getElementById('entries-list');
         const noEntriesMessage = document.getElementById('no-entries-message');
         const loginMessage = document.getElementById('login-message');
-        
-        // Nové premenné pre funkciu banovania
+        const formMessage = document.getElementById('form-message');
         const adminSection = document.getElementById('admin-section');
         const banInput = document.getElementById('ban-input');
         const banButton = document.getElementById('ban-button');
@@ -177,25 +191,58 @@
         const currentUserInfo = document.getElementById('current-user-info');
         const bannedUsersList = document.getElementById('banned-users-list');
         
-        // Kľúče pre ukladanie údajov
+        // Globálne premenné
         const STORAGE_KEY_NICKNAME = 'oz-app-nickname';
-        const BAN_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 dni v milisekundách
+        const BAN_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
         const ADMIN_NICKNAME = 'Oz Spoločenstvo';
-
         let currentNickname = '';
-        let currentUser = null;
-        let unsubscribeEntries = null;
-        let unsubscribeBans = null;
+        let userId = null;
 
-        // Firestore a Auth
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const bansCollectionPath = `artifacts/${appId}/public/data/bannedUsers`;
+        // Funkcia na overenie prihlásenia a banov
+        async function checkAuthState() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase Auth chyba:", error);
+                return;
+            }
 
-        // Funkcia pre zobrazenie prihlasovacej obrazovky
+            auth.onAuthStateChanged(async (user) => {
+                const storedNickname = localStorage.getItem(STORAGE_KEY_NICKNAME);
+                userId = user ? user.uid : null;
+
+                if (!storedNickname || !userId) {
+                    showLogin();
+                    return;
+                }
+
+                // Načítanie a overenie banov
+                // Oprava: Pridanie 'data' segmentu do cesty pre verejné bans
+                const banRef = doc(db, 'artifacts', appId, 'public', 'data', 'bans', storedNickname);
+                try {
+                    const banDoc = await getDoc(banRef);
+                    if (banDoc.exists()) {
+                        const banData = banDoc.data();
+                        if (banData.expiry > Date.now()) {
+                            showLogin(`Bol si zabanovaný. Skús sa prihlásiť znova neskôr. (ID: ${userId})`);
+                            localStorage.removeItem(STORAGE_KEY_NICKNAME);
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error("Chyba pri načítaní banov:", error);
+                }
+
+                currentNickname = storedNickname;
+                showApp();
+            });
+        }
+
+        // Zobrazí prihlasovaciu obrazovku
         function showLogin(message = 'Prosím, zadaj svoj prezývku pre prístup k systému.') {
             loginScreen.classList.remove('hidden');
             appScreen.classList.add('hidden');
@@ -204,167 +251,111 @@
             loginButton.disabled = false;
         }
 
-        // Funkcia pre zobrazenie hlavnej aplikácie
-        function showApp(user, nickname) {
-            currentUser = user;
-            currentNickname = nickname;
+        // Zobrazí hlavnú aplikáciu
+        function showApp() {
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
-            welcomeMessage.textContent = `Vitaj späť, ${nickname}! (ID: ${user.uid})`;
-            currentUserInfo.textContent = `Prihlásený ako: ${nickname}`;
+            welcomeMessage.textContent = `Vitaj späť, ${currentNickname}! (ID: ${userId})`;
+            currentUserInfo.textContent = `Prihlásený ako: ${currentNickname}`;
             
-            if (nickname === ADMIN_NICKNAME) {
+            if (currentNickname === ADMIN_NICKNAME) {
                 adminSection.classList.remove('hidden');
             } else {
                 adminSection.classList.add('hidden');
             }
+            
+            // Re-render
+            subscribeToEntries();
+            subscribeToBans();
+        }
 
-            // Sledujeme záznamy používateľa z Firestore
-            if (unsubscribeEntries) {
-                unsubscribeEntries();
-            }
-            const entriesCollectionPath = `artifacts/${appId}/users/${user.uid}/entries`;
-            unsubscribeEntries = onSnapshot(collection(db, entriesCollectionPath), (querySnapshot) => {
-                const entries = [];
-                querySnapshot.forEach((doc) => {
-                    entries.push({ id: doc.id, ...doc.data() });
-                });
+        // Sledujeme zmeny záznamov
+        function subscribeToEntries() {
+            const entriesRef = collection(db, `/artifacts/${appId}/users/${userId}/entries`);
+            onSnapshot(entriesRef, (snapshot) => {
+                const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderEntries(entries);
+            }, (error) => {
+                console.error("Chyba pri sledovaní záznamov:", error);
+                entriesList.innerHTML = `<p class="text-center text-red-400">Chyba pri načítaní záznamov. Skúste to prosím znova.</p>`;
+            });
+        }
+
+        // Sledujeme zmeny banov
+        function subscribeToBans() {
+            // Oprava: Pridanie 'data' segmentu do cesty pre verejné bans
+            const bansRef = collection(db, 'artifacts', appId, 'public', 'data', 'bans');
+            onSnapshot(bansRef, (snapshot) => {
+                const bans = snapshot.docs.map(doc => doc.data());
+                renderBannedUsers(bans);
+            }, (error) => {
+                console.error("Chyba pri sledovaní banov:", error);
+                bannedUsersList.innerHTML = `<p class="text-center text-red-400">Chyba pri načítaní banov.</p>`;
             });
         }
         
-        // Funkcia na zobrazenie zoznamu zabanovaných používateľov
-        function renderBannedUsers(users) {
-            bannedUsersList.innerHTML = '';
-            if (users.length === 0) {
-                bannedUsersList.innerHTML = '<p class="text-center text-gray-400">Žiadne zabanované účty.</p>';
-                return;
-            }
-
-            users.forEach(user => {
-                const expiryDate = new Date(user.expiry);
-                const expiryString = expiryDate.toLocaleString('sk-SK', {
-                    year: 'numeric',
-                    month: 'numeric',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-
-                const userElement = document.createElement('div');
-                userElement.className = 'bg-slate-700 p-3 rounded-xl flex flex-col sm:flex-row justify-between items-center';
-                userElement.innerHTML = `
-                    <p class="font-semibold">${user.nickname}</p>
-                    <span class="text-sm text-gray-400">Vyprší: ${expiryString}</span>
-                `;
-                bannedUsersList.appendChild(userElement);
-            });
-        }
-        
-        // Inicializácia a sledovanie stavu prihlásenia
-        onAuthStateChanged(auth, async (user) => {
-            // Unsubscribe from previous listeners to prevent duplicates on state change
-            if (unsubscribeEntries) unsubscribeEntries();
-            if (unsubscribeBans) unsubscribeBans();
-
-            if (user) {
-                const storedNickname = localStorage.getItem(STORAGE_KEY_NICKNAME);
-                if (storedNickname) {
-                    const banDoc = doc(db, bansCollectionPath, storedNickname);
-                    unsubscribeBans = onSnapshot(banDoc, (docSnapshot) => {
-                        const banData = docSnapshot.data();
-                        if (banData && Date.now() < banData.expiry) {
-                            showLogin(`Bol si zabanovaný. Skús sa prihlásiť znova neskôr.`);
-                            nicknameInput.disabled = true;
-                            loginButton.disabled = true;
-                        } else {
-                            showApp(user, storedNickname);
-                        }
-                    });
-                } else {
-                    showLogin();
-                }
-
-                // Sledujeme banované účty v reálnom čase (pre admina)
-                const bansCollection = collection(db, bansCollectionPath);
-                unsubscribeBans = onSnapshot(query(bansCollection), (querySnapshot) => {
-                    const bannedUsers = [];
-                    querySnapshot.forEach((doc) => {
-                        const nickname = doc.id;
-                        const banData = doc.data();
-                        if (banData && Date.now() < banData.expiry) {
-                            bannedUsers.push({ nickname, expiry: banData.expiry });
-                        }
-                    });
-                    renderBannedUsers(bannedUsers);
-                }, (error) => {
-                    console.error("Error listening to banned users:", error);
-                });
-            } else {
-                showLogin();
-            }
-        });
-
-        // Spracovanie prihlásenia po kliknutí na tlačidlo
-        loginButton.addEventListener('click', async () => {
+        // Prihlásenie
+        loginButton.addEventListener('click', () => {
             const nickname = nicknameInput.value.trim();
             if (nickname) {
-                try {
-                    await signInAnonymously(auth);
-                    localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
-                } catch (error) {
-                    console.error("Chyba pri prihlásení:", error);
-                    showLogin(`Pri prihlásení nastala chyba. Skús to znova. (${error.message})`);
-                }
+                localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
+                checkAuthState();
             } else {
                 nicknameInput.focus();
             }
         });
         
-        // Spracovanie odhlásenia
+        // Odhlásenie
         logoutButton.addEventListener('click', async () => {
             localStorage.removeItem(STORAGE_KEY_NICKNAME);
             await auth.signOut();
-            if (unsubscribeEntries) {
-                unsubscribeEntries();
-            }
-            if (unsubscribeBans) {
-                unsubscribeBans();
-            }
             showLogin();
         });
 
-
-        // Spracovanie odoslania formulára
+        // Odoslanie formulára
         copyrightForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            formMessage.textContent = '';
             
-            if (!currentUser) {
-                showLogin("Pre pridanie záznamu sa musíš prihlásiť.");
+            if (!userId) {
+                formMessage.textContent = "Pre pridanie záznamu sa musíš prihlásiť.";
+                formMessage.style.color = '#f87171';
                 return;
             }
-            
+
+            try {
+                new URL(youtubeLinkInput.value.trim());
+            } catch (error) {
+                formMessage.textContent = 'Zadaný link na YouTube nie je platný. Skontroluj, či začína s "https://".';
+                formMessage.style.color = '#f87171';
+                return;
+            }
+
+            const entriesRef = collection(db, `/artifacts/${appId}/users/${userId}/entries`);
             const newEntry = {
-                musicTitle: musicTitleInput.value,
-                youtubeLink: youtubeLinkInput.value,
+                music_title: musicTitleInput.value,
+                youtube_link: youtubeLinkInput.value.trim(),
                 platform: platformInput.value,
-                user: userInput.value,
+                user_nickname: userInput.value,
                 date: dateInput.value,
                 notes: notesInput.value,
-                createdAt: new Date()
+                user_id: userId,
+                created_at: Date.now()
             };
 
             try {
-                const entriesCollectionPath = `artifacts/${appId}/users/${currentUser.uid}/entries`;
-                await addDoc(collection(db, entriesCollectionPath), newEntry);
+                await addDoc(entriesRef, newEntry);
                 copyrightForm.reset();
+                formMessage.textContent = 'Záznam úspešne pridaný!';
+                formMessage.style.color = '#34d399';
             } catch (error) {
                 console.error("Chyba pri pridávaní záznamu:", error);
-                alert("Nepodarilo sa pridať záznam. Skús to prosím znova.");
+                formMessage.textContent = 'Nepodarilo sa pridať záznam. Skús to prosím znova.';
+                formMessage.style.color = '#f87171';
             }
         });
 
-        // Nová funkcia na banovanie používateľov
+        // Banovanie používateľa (len pre admina)
         banButton.addEventListener('click', async () => {
             const nicknameToBan = banInput.value.trim();
             if (!nicknameToBan) {
@@ -378,10 +369,12 @@
                 banMessage.style.color = '#f87171';
                 return;
             }
-
+            
+            // Oprava: Pridanie 'data' segmentu do cesty pre verejné bans
+            const banRef = doc(db, 'artifacts', appId, 'public', 'data', 'bans', nicknameToBan);
             try {
-                const docRef = doc(db, bansCollectionPath, nicknameToBan);
-                await setDoc(docRef, {
+                await setDoc(banRef, {
+                    nickname: nicknameToBan,
                     expiry: Date.now() + BAN_DURATION_MS
                 });
                 banMessage.textContent = `Účet ${nicknameToBan} bol úspešne zabanovaný.`;
@@ -394,7 +387,7 @@
             banInput.value = '';
         });
 
-        // Nová funkcia na odbanovanie používateľov
+        // Odbanovanie používateľa
         unbanButton.addEventListener('click', async () => {
             const nicknameToUnban = banInput.value.trim();
             if (!nicknameToUnban) {
@@ -402,10 +395,11 @@
                 banMessage.style.color = '#f87171';
                 return;
             }
-
+            
+            // Oprava: Pridanie 'data' segmentu do cesty pre verejné bans
+            const banRef = doc(db, 'artifacts', appId, 'public', 'data', 'bans', nicknameToUnban);
             try {
-                const docRef = doc(db, bansCollectionPath, nicknameToUnban);
-                await deleteDoc(docRef);
+                await deleteDoc(banRef);
                 banMessage.textContent = `Účet ${nicknameToUnban} bol úspešne odbanovaný.`;
                 banMessage.style.color = '#34d399';
             } catch (error) {
@@ -416,55 +410,93 @@
             banInput.value = '';
         });
 
+        // Vykreslenie záznamov
         function renderEntries(entries) {
             entriesList.innerHTML = '';
             
             if (entries.length === 0) {
                 noEntriesMessage.classList.remove('hidden');
-                return;
             } else {
                 noEntriesMessage.classList.add('hidden');
-            }
+                entries.sort((a, b) => b.created_at - a.created_at).forEach((entry) => {
+                    const entryElement = document.createElement('div');
+                    entryElement.className = 'bg-slate-700 p-4 rounded-xl shadow flex justify-between items-start';
+                    const linkHtml = (function(url) {
+                        try {
+                            new URL(url);
+                            return `<a href="${url}" target="_blank" class="font-bold text-blue-300 hover:underline transition-colors">${url}</a>`;
+                        } catch (e) {
+                            return `<span class="font-bold text-blue-300">${url}</span>`;
+                        }
+                    })(entry.youtube_link);
 
-            entries.forEach((entry) => {
-                const entryElement = document.createElement('div');
-                entryElement.className = 'bg-slate-700 p-4 rounded-xl shadow flex justify-between items-start';
-                entryElement.innerHTML = `
-                    <div class="flex-grow">
-                        <p class="text-sm text-gray-400">Názov hudby: <span class="font-bold text-blue-300">${entry.musicTitle}</span></p>
-                        <p class="text-sm text-gray-400">Link na YouTube: <a href="${entry.youtubeLink}" target="_blank" class="font-bold text-blue-300 hover:underline transition-colors">${entry.youtubeLink}</a></p>
-                        <p class="text-sm text-gray-400">Platforma: <span class="font-bold text-blue-300">${entry.platform}</span></p>
-                        <p class="text-sm text-gray-400">Používateľ: <span class="font-bold text-white">${entry.user}</span></p>
-                        <p class="text-sm text-gray-400">Dátum: <span class="text-gray-300">${entry.date}</span></p>
-                        <p class="mt-2 text-sm text-gray-300 leading-relaxed">${entry.notes}</p>
-                    </div>
-                    <button class="delete-button text-red-400 hover:text-red-500 transition-colors p-2" data-id="${entry.id}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                `;
-                entriesList.appendChild(entryElement);
-            });
-            
-            document.querySelectorAll('.delete-button').forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    const entryId = e.currentTarget.dataset.id;
-                    if (!currentUser) return;
-                    try {
-                        const docRef = doc(db, `artifacts/${appId}/users/${currentUser.uid}/entries`, entryId);
-                        await deleteDoc(docRef);
-                    } catch (error) {
-                        console.error("Chyba pri mazaní záznamu:", error);
-                        alert("Nepodarilo sa vymazať záznam. Skús to prosím znova.");
-                    }
+                    entryElement.innerHTML = `
+                        <div class="flex-grow">
+                            <p class="text-sm text-gray-400">Názov hudby: <span class="font-bold text-blue-300">${entry.music_title}</span></p>
+                            <p class="text-sm text-gray-400">Link na YouTube: ${linkHtml}</p>
+                            <p class="text-sm text-gray-400">Platforma: <span class="font-bold text-blue-300">${entry.platform}</span></p>
+                            <p class="text-sm text-gray-400">Používateľ: <span class="font-bold text-white">${entry.user_nickname}</span></p>
+                            <p class="text-sm text-gray-400">Dátum: <span class="text-gray-300">${entry.date}</span></p>
+                            <p class="mt-2 text-sm text-gray-300 leading-relaxed">${entry.notes}</p>
+                        </div>
+                        <button class="delete-button text-red-400 hover:text-red-500 transition-colors p-2" data-id="${entry.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    `;
+                    entriesList.appendChild(entryElement);
                 });
-            });
+                
+                document.querySelectorAll('.delete-button').forEach(button => {
+                    button.addEventListener('click', async (e) => {
+                        const entryId = e.currentTarget.dataset.id;
+                        const entryRef = doc(db, `/artifacts/${appId}/users/${userId}/entries`, entryId);
+                        try {
+                            await deleteDoc(entryRef);
+                        } catch (error) {
+                            console.error("Chyba pri mazaní záznamu:", error);
+                            formMessage.textContent = 'Nepodarilo sa vymazať záznam. Skús to prosím znova.';
+                            formMessage.style.color = '#f87171';
+                        }
+                    });
+                });
+            }
         }
-
+        
+        // Vykreslenie banovaných účtov
+        function renderBannedUsers(users) {
+            bannedUsersList.innerHTML = '';
+            const activeBans = users.filter(user => user.expiry > Date.now());
+            if (activeBans.length === 0) {
+                bannedUsersList.innerHTML = '<p class="text-center text-gray-400">Žiadne zabanované účty.</p>';
+            } else {
+                activeBans.forEach(user => {
+                    const expiryDate = new Date(user.expiry);
+                    const expiryString = expiryDate.toLocaleString('sk-SK', {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    const userElement = document.createElement('div');
+                    userElement.className = 'bg-slate-700 p-3 rounded-xl flex flex-col sm:flex-row justify-between items-center';
+                    userElement.innerHTML = `
+                        <p class="font-semibold">${user.nickname}</p>
+                        <span class="text-sm text-gray-400">Vyprší: ${expiryString}</span>
+                    `;
+                    bannedUsersList.appendChild(userElement);
+                });
+            }
+        }
+        
+        // Inicializácia pri načítaní stránky
+        checkAuthState();
     </script>
 </body>
 </html>
+
 
 
 
