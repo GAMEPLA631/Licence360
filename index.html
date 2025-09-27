@@ -136,6 +136,35 @@
                 <p id="form-message" class="mt-4 text-center text-sm font-semibold md:col-span-2"></p>
             </form>
         </div>
+        
+        <!-- Centrum pomoci AI - Nová sekcia -->
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700 mb-12">
+            <h2 class="text-3xl font-bold mb-6 text-white text-center flex items-center justify-center">
+                Centrum pomoci AI
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-3 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M5.5 10a.5.5 0 01.5-.5h7a.5.5 0 010 1h-7a.5.5 0 01-.5-.5zM5.5 7a.5.5 0 01.5-.5h7a.5.5 0 010 1h-7a.5.5 0 01-.5-.5zM5.5 13a.5.5 0 01.5-.5h7a.5.5 0 010 1h-7a.5.5 0 01-.5-.5z" />
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.5.5 0 01.5-.5h.5a.5.5 0 01.5.5v3h3a.5.5 0 01.5.5v.5a.5.5 0 01-.5.5h-3v3a.5.5 0 01-.5.5h-.5a.5.5 0 01-.5-.5v-3h-3a.5.5 0 01-.5-.5v-.5a.5.5 0 01.5-.5h3V5z" clip-rule="evenodd" />
+                </svg>
+            </h2>
+
+            <div id="chat-window" class="h-64 overflow-y-auto bg-slate-900 p-4 rounded-xl mb-4 flex flex-col space-y-3">
+                <!-- Chat správy sa vložia sem -->
+                <div class="text-center text-sm text-gray-500 italic">
+                    Spýtaj sa AI na akýkoľvek problém s licenciami, autorskými právami, alebo otázky k aplikácii.
+                </div>
+            </div>
+
+            <div id="chat-limit-message" class="text-center text-red-400 font-semibold mb-4 hidden">
+                <!-- Správa o limite sa zobrazí sem -->
+            </div>
+
+            <form id="chat-form" class="flex">
+                <input type="text" id="chat-input" class="flex-grow p-3 rounded-l-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Napíš svoju otázku..." required>
+                <button type="submit" id="chat-send-button" class="py-3 px-6 bg-blue-600 text-white font-semibold rounded-r-xl hover:bg-blue-700 transition-colors shadow-lg">
+                    Odoslať
+                </button>
+            </form>
+        </div>
 
         <!-- Zoznam záznamov -->
         <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
@@ -180,6 +209,8 @@
         // Dáta sa ukladajú v prehliadači a nie sú šifrované. ***
 
         const ADMIN_EMAIL = 'admin@example.com';
+        const MAX_CHAT_REQUESTS = 10; // Maximálny počet interakcií za 3 dni
+        const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
         // Premenné pre prístup k DOM elementom
         const authScreen = document.getElementById('auth-screen');
@@ -208,7 +239,7 @@
         const formMessage = document.getElementById('form-message');
         const loginError = document.getElementById('login-error');
         const registerError = document.getElementById('register-error');
-        const loginSuccess = document.getElementById('login-success'); // Nový element
+        const loginSuccess = document.getElementById('login-success');
         const adminSection = document.getElementById('admin-section');
         const banInput = document.getElementById('ban-input');
         const banButton = document.getElementById('ban-button');
@@ -216,12 +247,201 @@
         const banMessage = document.getElementById('ban-message');
         const currentUserInfo = document.getElementById('current-user-info');
         const bannedUsersList = document.getElementById('banned-users-list');
+        
+        // Nové DOM referencie pre AI chat
+        const chatWindow = document.getElementById('chat-window');
+        const chatInput = document.getElementById('chat-input');
+        const chatForm = document.getElementById('chat-form');
+        const chatSendButton = document.getElementById('chat-send-button');
+        const chatLimitMessage = document.getElementById('chat-limit-message');
 
         const USERS_STORAGE_KEY = 'oz-app-users';
         const ENTRIES_STORAGE_KEY_PREFIX = 'oz-app-entries-';
         const BANS_STORAGE_KEY = 'oz-app-bans';
         const CURRENT_USER_STORAGE_KEY = 'oz-app-current-user';
+        const CHAT_USAGE_KEY_PREFIX = 'oz-app-chat-usage-';
         const BAN_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
+        
+        // Gemini API konštanty
+        const apiKey = "AIzaSyDGZFoDcXgHLrhyfada9ZdlrHTnyrfAn2U"; // API kľúč je ponechaný prázdny, bude poskytnutý runtime
+        const GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+        const MAX_OUTPUT_TOKENS = 120; // Token limit per response
+
+        // --- Chat Usage and Limit Functions ---
+
+        // Načíta stav používania chatu pre aktuálneho používateľa
+        function getChatUsage(email) {
+            const usage = localStorage.getItem(CHAT_USAGE_KEY_PREFIX + email);
+            return usage ? JSON.parse(usage) : { requestsUsed: 0, lastReset: 0 };
+        }
+
+        // Uloží stav používania chatu
+        function saveChatUsage(email, usage) {
+            localStorage.setItem(CHAT_USAGE_KEY_PREFIX + email, JSON.stringify(usage));
+        }
+
+        // Skontroluje, či je používateľ v limite
+        function checkChatLimit(email) {
+            const usage = getChatUsage(email);
+            const now = Date.now();
+            
+            // Ak uplynuli 3 dni od posledného resetu, vynulujeme limit
+            if (now > usage.lastReset + THREE_DAYS_MS) {
+                usage.requestsUsed = 0;
+                usage.lastReset = now;
+                saveChatUsage(email, usage);
+            }
+            
+            const isLimited = usage.requestsUsed >= MAX_CHAT_REQUESTS;
+
+            if (isLimited) {
+                const nextResetTime = new Date(usage.lastReset + THREE_DAYS_MS);
+                const nextResetTimeString = nextResetTime.toLocaleString('sk-SK');
+                chatLimitMessage.textContent = `Prekročil si limit ${MAX_CHAT_REQUESTS} interakcií. Chat bude opäť dostupný: ${nextResetTimeString}.`;
+                chatLimitMessage.classList.remove('hidden');
+                chatInput.disabled = true;
+                chatSendButton.disabled = true;
+            } else {
+                chatLimitMessage.classList.add('hidden');
+                chatInput.disabled = false;
+                chatSendButton.disabled = false;
+            }
+            
+            return isLimited;
+        }
+
+        // Zvýši počet použitých žiadostí
+        function incrementChatUsage(email) {
+            const usage = getChatUsage(email);
+            // Ak je lastReset 0, nastavíme ho na aktuálny čas ako štart 3-dňového obdobia
+            if (usage.lastReset === 0) {
+                usage.lastReset = Date.now();
+            }
+            usage.requestsUsed += 1;
+            saveChatUsage(email, usage);
+            checkChatLimit(email); // Skontrolujeme po zvýšení
+        }
+
+        // Vykreslí chatovú správu
+        function appendMessage(sender, text) {
+            const messageDiv = document.createElement('div');
+            if (sender === 'user') {
+                messageDiv.className = 'flex justify-end';
+                messageDiv.innerHTML = `<div class="bg-blue-600 text-white p-3 rounded-lg max-w-xs md:max-w-md">${text}</div>`;
+            } else if (sender === 'ai') {
+                messageDiv.className = 'flex justify-start';
+                messageDiv.innerHTML = `<div class="bg-slate-700 text-white p-3 rounded-lg max-w-xs md:max-w-md">
+                    <span class="font-bold text-blue-300">AI Pomocník:</span> ${text}
+                </div>`;
+            } else if (sender === 'thinking') {
+                 messageDiv.id = 'thinking-message';
+                 messageDiv.className = 'flex justify-start';
+                 messageDiv.innerHTML = `<div class="bg-slate-700 text-gray-400 p-3 rounded-lg max-w-xs md:max-w-md italic">Thinking...</div>`;
+            }
+            chatWindow.appendChild(messageDiv);
+            // Scroll na koniec okna
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // Funkcia na volanie Gemini API
+        async function callGeminiAPI(query) {
+            const systemPrompt = "Si priateľský AI asistent špecializujúci sa na vysvetľovanie a riešenie problémov súvisiacich s autorskými právami, zákonnými licenciami a evidenciou hudobných diel na Slovensku. Odpovedaj stručne a priamo k veci, s ohľadom na obmedzený priestor.";
+
+            const payload = {
+                contents: [{ parts: [{ text: query }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    maxOutputTokens: MAX_OUTPUT_TOKENS, // Hard token limit for the response
+                },
+                tools: [{ "google_search": {} }], // Zapnutie Google Search pre aktuálne informácie
+            };
+
+            const apiUrl = GEMINI_API_URL;
+            const maxRetries = 3;
+            let attempt = 0;
+
+            while (attempt < maxRetries) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    if (text) {
+                        return text;
+                    } else {
+                        // Ak model vráti prázdny text (napr. kvôli bezpečnostnému filtru)
+                        return "Prepáč, nemôžem odpovedať na túto otázku. Skús preformulovať svoju požiadavku.";
+                    }
+
+                } catch (error) {
+                    attempt++;
+                    if (attempt < maxRetries) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        throw new Error("Nastala chyba pri komunikácii s AI. Skús to prosím neskôr.");
+                    }
+                }
+            }
+        }
+        
+        // Spracovanie odoslania chatu
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_STORAGE_KEY));
+            if (!currentUser) return; // Nemalo by sa stať, ak je app-screen viditeľný
+
+            if (checkChatLimit(currentUser.email)) {
+                return; // Zablokuje odoslanie, ak je limit prekročený
+            }
+
+            const query = chatInput.value.trim();
+            if (!query) return;
+
+            appendMessage('user', query);
+            chatInput.value = ''; // Vyčistenie poľa
+            chatSendButton.disabled = true;
+            chatInput.disabled = true;
+
+            // Zobrazenie "Thinking..."
+            appendMessage('thinking');
+            const thinkingMessage = document.getElementById('thinking-message');
+
+
+            try {
+                const aiResponse = await callGeminiAPI(query);
+                
+                // Odstránenie "Thinking..."
+                if (thinkingMessage) thinkingMessage.remove();
+                
+                appendMessage('ai', aiResponse);
+                
+                incrementChatUsage(currentUser.email); // Zaznamenanie úspešnej interakcie
+
+            } catch (error) {
+                console.error("AI Error:", error);
+                if (thinkingMessage) thinkingMessage.remove();
+                appendMessage('ai', "Prepáč, došlo k technickej chybe. Skús to prosím znova.");
+            } finally {
+                chatSendButton.disabled = false;
+                chatInput.disabled = false;
+                checkChatLimit(currentUser.email); // Aktualizuje stav po dokončení
+            }
+        });
+
+        // --- Pôvodné funkcie ---
 
         // Simulácia hashovania hesla
         function hashPassword(password) {
@@ -281,6 +501,7 @@
                 showAppScreen(currentUser);
                 renderEntries(currentUser.email);
                 renderBannedUsers();
+                checkChatLimit(currentUser.email); // Skontroluje limit AI chatu pri prihlásení
             } else {
                 showAuthScreen();
             }
@@ -520,7 +741,7 @@
                 document.querySelectorAll('.delete-button').forEach(button => {
                     button.addEventListener('click', (e) => {
                         const entryId = e.currentTarget.dataset.id;
-                        const userEmail = e.currentTarget.dataset.user-email;
+                        const userEmail = e.currentTarget.dataset.userEmail;
                         const entriesKey = ENTRIES_STORAGE_KEY_PREFIX + userEmail;
                         const entries = JSON.parse(localStorage.getItem(entriesKey) || '[]');
                         
@@ -568,6 +789,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
