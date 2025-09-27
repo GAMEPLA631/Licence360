@@ -147,23 +147,26 @@
                 </svg>
             </h2>
 
-            <div id="chat-window" class="h-64 overflow-y-auto bg-slate-900 p-4 rounded-xl mb-4 flex flex-col space-y-3">
-                <!-- Chat správy sa vložia sem -->
-                <div class="text-center text-sm text-gray-500 italic">
-                    Spýtaj sa AI na akýkoľvek problém s licenciami, autorskými právami, alebo otázky k aplikácii.
+            <!-- Nový wrapper pre obmedzenie šírky a centrovanie -->
+            <div class="max-w-xl mx-auto">
+                <div id="chat-window" class="h-64 overflow-y-auto bg-slate-900 p-4 rounded-xl mb-4 flex flex-col space-y-3">
+                    <!-- Chat správy sa vložia sem -->
+                    <div class="text-center text-sm text-gray-500 italic">
+                        Spýtaj sa AI na akýkoľvek problém s licenciami, autorskými právami, alebo otázky k aplikácii.
+                    </div>
                 </div>
-            </div>
 
-            <div id="chat-limit-message" class="text-center text-red-400 font-semibold mb-4 hidden">
-                <!-- Správa o limite sa zobrazí sem -->
-            </div>
+                <div id="chat-limit-message" class="text-center text-red-400 font-semibold mb-4 hidden">
+                    <!-- Správa o limite sa zobrazí sem -->
+                </div>
 
-            <form id="chat-form" class="flex">
-                <input type="text" id="chat-input" class="flex-grow p-3 rounded-l-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Napíš svoju otázku..." required>
-                <button type="submit" id="chat-send-button" class="py-3 px-6 bg-blue-600 text-white font-semibold rounded-r-xl hover:bg-blue-700 transition-colors shadow-lg">
-                    Odoslať
-                </button>
-            </form>
+                <form id="chat-form" class="flex">
+                    <input type="text" id="chat-input" class="flex-grow p-3 rounded-l-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Napíš svoju otázku..." required>
+                    <button type="submit" id="chat-send-button" class="py-3 px-6 bg-blue-600 text-white font-semibold rounded-r-xl hover:bg-blue-700 transition-colors shadow-lg">
+                        Odoslať
+                    </button>
+                </form>
+            </div>
         </div>
 
         <!-- Zoznam záznamov -->
@@ -789,6 +792,7 @@
     </script>
 </body>
 </html>
+
 
 
 
