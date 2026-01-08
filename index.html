@@ -16,8 +16,23 @@
             background-color: #1a1a2e; /* Temne fialová pre futuristický vzhľad */
             color: #e0e0e0;
         }
+        /* Štýl pre modálne okno */
+        .modal {
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .hidden-modal {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .hidden-modal .modal-content {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
     </style>
-    <!-- Webová ikona - teraz vložená priamo ako SVG pre lepšiu spoľahlivosť -->
+    <!-- Webová ikona -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
 </head>
 <body class="p-8">
@@ -66,12 +81,25 @@
     <!-- Hlavná aplikácia - spočiatku skrytá -->
     <div id="app-screen" class="hidden">
         <header class="text-center mb-10">
-            <h1 class="text-5xl font-extrabold text-white">Oz Spoločnosť</h1>
-            <div class="flex justify-center items-center mt-2">
-                <p id="welcome-message" class="text-xl font-semibold text-blue-300 mr-4"></p>
-                <button id="logout-button" class="py-2 px-4 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg">
-                    Odhlásiť sa
-                </button>
+            <!-- Flex kontajner pre titulok, uvítaciu správu a tlačidlá -->
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                <h1 class="text-5xl font-extrabold text-white text-left hidden sm:block">Oz Spoločnosť</h1>
+                
+                <!-- Uvítacia správa a odhlásenie / nastavenia -->
+                <div class="flex items-center space-x-4">
+                    <p id="welcome-message" class="text-xl font-semibold text-blue-300"></p>
+                    
+                    <!-- Tlačidlo Nastavenia (ozubené koliesko) -->
+                    <button id="settings-button" class="p-2 bg-slate-700 rounded-full text-white hover:bg-slate-600 transition-colors shadow-lg" title="Nastavenia AI kľúča">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M11.49 3.17c-.38-.21-.88-.21-1.26 0l-2.43 1.34a1 1 0 00-.5.89v.76c.48.51 1.07 1.25 1.63 2.11a7.01 7.01 0 002.56 2.56c.86.56 1.6 1.15 2.11 1.63h.76a1 1 0 00.89-.5l1.34-2.43c.21-.38.21-.88 0-1.26l-1.34-2.43a1 1 0 00-.89-.5h-.76c-.51-.48-1.25-1.07-2.11-1.63a7.01 7.01 0 00-2.56-2.56zm-1.49 9.33a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    
+                    <button id="logout-button" class="py-2 px-4 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg">
+                        Odhlásiť sa
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -137,7 +165,74 @@
             </form>
         </div>
         
-        <!-- Centrum pomoci AI - Nová sekcia -->
+        <!-- Sekcia: Dokumentácia Pravidiel a Funkcií V 2.0 -->
+        <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700 mb-12">
+            <h2 class="text-3xl font-bold mb-6 text-white text-center">Dokumentácia Pravidiel a Funkcií V 2.0</h2>
+            
+            <!-- 1. Pôvodné Pravidlá (Zachované) -->
+            <h3 class="text-2xl font-semibold mb-4 text-blue-400">1. Pôvodné Pravidlá (Zachované)</h3>
+            <p class="text-gray-300 mb-4 italic">Tieto pravidlá zostávajú v platnosti a tvoria základ nášho systému/projektu/hry. Prosím, doplňte zástupné texty s vašimi originálnymi pravidlami.</p>
+
+            <div class="space-y-3 mb-8">
+                <h4 class="text-xl font-medium text-gray-300">1.1. Základné Zásady</h4>
+                <ul class="list-disc list-inside ml-4 text-gray-400 space-y-1">
+                    <li><span class="font-semibold text-white">[ZÁSTUPNÝ TEXT]</span> Pravidlo 1: Popis pôvodného pravidla (napr. Všetky projekty musia prejsť dvojitou kontrolou kódu.)</li>
+                    <li><span class="font-semibold text-white">[ZÁSTUPNÝ TEXT]</span> Pravidlo 2: Popis pôvodného pravidla (napr. Používatelia sú povinní dodržiavať etický kódex komunity.)</li>
+                </ul>
+                
+                <h4 class="text-xl font-medium text-gray-300">1.2. Prevádzkové Smernice</h4>
+                <ul class="list-disc list-inside ml-4 text-gray-400 space-y-1">
+                    <li><span class="font-semibold text-white">[ZÁSTUPNÝ TEXT]</span> Smernica 1: Popis pôvodnej smernice (napr. Schôdze tímu sa konajú každý pondelok o 9:00.)</li>
+                    <li><span class="font-semibold text-white">[ZÁSTUPNÝ TEXT]</span> Smernica 2: Popis pôvodnej smernice (napr. Maximálna dĺžka príspevku je 500 slov.)</li>
+                </ul>
+            </div>
+
+            <hr class="border-slate-700 my-6">
+
+            <!-- 2. Nové Pravidlá -->
+            <h3 class="text-2xl font-semibold mb-4 text-green-400">2. Nové Pravidlá (V 2.0)</h3>
+            <p class="text-gray-300 mb-4">Nasledujúce pravidlá sú novo pridané a sú záväzné s okamžitou platnosťou.</p>
+            
+            <div class="space-y-3 mb-8">
+                <h4 class="text-xl font-medium text-gray-300">2.1. Nové Záväzné Pravidlá</h4>
+                <ul class="list-disc list-inside ml-4 text-gray-400 space-y-1">
+                    <li><span class="font-semibold text-green-300">Povinné Testovanie:</span> Všetky nové funkcie musia byť pokryté unit testami s minimálne 80% pokrytím kódu pred fúziou do hlavnej vetvy.</li>
+                    <li><span class="font-semibold text-green-300">Označovanie Rizík:</span> Každá úloha s kritickým dopadom na bezpečnosť alebo výkon musí byť označená štítkom "CRITICAL" a musí mať schválenie od hlavného architekta.</li>
+                    <li><span class="font-semibold text-green-300">Limity Času Odozvy:</span> Externé rozhrania musia dosahovať čas odozvy kratší ako 200 ms v 95% prípadov.</li>
+                </ul>
+                
+                <h4 class="text-xl font-medium text-gray-300">2.2. Pravidlá Pre Komunikáciu</h4>
+                <ul class="list-disc list-inside ml-4 text-gray-400 space-y-1">
+                    <li><span class="font-semibold text-green-300">Asynchrónna Komunikácia:</span> Pre diskusie, ktoré nie sú urgentné, sa preferuje asynchrónna komunikácia (e-mail, Slack vlákna) pred priamymi hovormi.</li>
+                    <li><span class="font-semibold text-green-300">Týždenný Súhrn:</span> Každý člen tímu musí na konci týždňa odovzdať stručný súhrn (max. 3 body) dokončenej práce.</li>
+                </ul>
+            </div>
+
+            <hr class="border-slate-700 my-6">
+
+            <!-- 3. Nové Funkcie -->
+            <h3 class="text-2xl font-semibold mb-4 text-purple-400">3. Nové Funkcie (Funkcionality)</h3>
+            <p class="text-gray-300 mb-4">Tieto funkcie boli pridané do aplikácie/systému na rozšírenie možností používania.</p>
+            
+            <div class="space-y-3">
+                <h4 class="text-xl font-medium text-gray-300">3.1. Funkcie Pre Používateľov</h4>
+                <ul class="list-disc list-inside ml-4 text-gray-400 space-y-1">
+                    <li><span class="font-semibold text-purple-300">Integrácia s Kalendárom:</span> Nová funkcia umožňuje používateľom priamo synchronizovať termíny a udalosti s ich externým kalendárom (Google/Outlook). (Poznámka: Táto je zatiaľ len dokumentovaná, nie funkčná v aplikácii.)</li>
+                    <li><span class="font-semibold text-purple-300">Pokročilé Filtrovanie Dát:</span> Bolo pridané dynamické filtrovanie dát s možnosťou kombinovania až troch rôznych kritérií vyhľadávania. (Poznámka: Táto je zatiaľ len dokumentovaná, nie funkčná v aplikácii.)</li>
+                    <li><span class="font-semibold text-purple-300">Režim Tmavého Motívu:</span> Používatelia si teraz môžu zvoliť tmavý motív rozhrania pre zlepšenie vizuálneho komfortu. (Aplikácia už používa tmavý motív.)</li>
+                </ul>
+                
+                <h4 class="text-xl font-medium text-gray-300">3.2. Funkcie Pre Administrátorov</h4>
+                <ul class="list-disc list-inside ml-4 text-gray-400 space-y-1">
+                    <li><span class="font-semibold text-purple-300">Auditný Záznam v Reálnom Čase:</span> Administrátori majú prístup k záznamu všetkých kritických systémových udalostí v reálnom čase, vrátane geografickej polohy. (Poznámka: Táto je zatiaľ len dokumentovaná, nie funkčná v aplikácii.)</li>
+                    <li><span class="font-semibold text-purple-300">Hromadné Spracovanie Účtov:</span> Nový nástroj na hromadnú úpravu alebo deaktiváciu viac ako 50 používateľských účtov naraz. (Poznámka: Táto je zatiaľ len dokumentovaná, nie funkčná v aplikácii.)</li>
+                    <li><span class="font-semibold text-purple-300">Automatické Zálohovanie Konfigurácie:</span> Systém automaticky vytvára dennú zálohu konfiguračných súborov a ukladá ju na vzdialené úložisko. (Poznámka: Táto je zatiaľ len dokumentovaná, nie funkčná v aplikácii.)</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <!-- Centrum pomoci AI - Sekcia s obmedzenou šírkou -->
         <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700 mb-12">
             <h2 class="text-3xl font-bold mb-6 text-white text-center flex items-center justify-center">
                 Centrum pomoci AI
@@ -152,7 +247,7 @@
                 <div id="chat-window" class="h-64 overflow-y-auto bg-slate-900 p-4 rounded-xl mb-4 flex flex-col space-y-3">
                     <!-- Chat správy sa vložia sem -->
                     <div class="text-center text-sm text-gray-500 italic">
-                        Spýtaj sa AI na akýkoľvek problém s licenciami, autorskými právami, alebo otázky k aplikácii.
+                        Spýtaj sa AI na akýkoľvek problém s licenciami, autorskými právami, alebo otázky k aplikácii. (Potrebný API kľúč v Nastaveniach)
                     </div>
                 </div>
 
@@ -207,6 +302,31 @@
         </div>
     </div>
 
+    <!-- Modálne okno pre nastavenia API kľúča -->
+    <div id="settings-modal" class="modal hidden-modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="modal-content bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700">
+            <h3 class="text-2xl font-bold mb-6 text-white text-center">Nastavenia API kľúča pre AI</h3>
+            <p class="text-gray-400 mb-4">Pre fungovanie AI Pomocníka je potrebné zadať platný kľúč Google Gemini API. Kľúč je uložený len vo vašom prehliadači.</p>
+
+            <form id="api-key-form">
+                <input type="password" id="api-key-input" class="w-full p-3 mb-4 rounded-xl bg-slate-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Vložte Váš Gemini API kľúč" required>
+                <div class="flex justify-between space-x-3">
+                    <button type="button" id="delete-api-key-button" class="py-3 px-6 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg flex-grow">
+                        Vymazať kľúč
+                    </button>
+                    <button type="submit" class="py-3 px-6 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors shadow-lg flex-grow">
+                        Uložiť kľúč
+                    </button>
+                </div>
+                <p id="api-key-message" class="mt-4 text-center text-sm font-semibold text-green-400"></p>
+            </form>
+            
+            <button id="close-modal-button" class="mt-6 w-full py-2 bg-slate-700 text-white font-semibold rounded-xl hover:bg-slate-600 transition-colors">
+                Zavrieť
+            </button>
+        </div>
+    </div>
+    
     <script>
         // *** Dôležité upozornenie: Táto aplikácia používa localStorage, čo nie je bezpečné pre produkčné prostredie.
         // Dáta sa ukladajú v prehliadači a nie sú šifrované. ***
@@ -251,25 +371,78 @@
         const currentUserInfo = document.getElementById('current-user-info');
         const bannedUsersList = document.getElementById('banned-users-list');
         
-        // Nové DOM referencie pre AI chat
+        // Nové DOM referencie pre AI chat a Nastavenia
         const chatWindow = document.getElementById('chat-window');
         const chatInput = document.getElementById('chat-input');
         const chatForm = document.getElementById('chat-form');
         const chatSendButton = document.getElementById('chat-send-button');
         const chatLimitMessage = document.getElementById('chat-limit-message');
+        
+        const settingsButton = document.getElementById('settings-button');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeModalButton = document.getElementById('close-modal-button');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const apiKeyForm = document.getElementById('api-key-form');
+        const apiKeyMessage = document.getElementById('api-key-message');
+        const deleteApiKeyButton = document.getElementById('delete-api-key-button');
+
 
         const USERS_STORAGE_KEY = 'oz-app-users';
         const ENTRIES_STORAGE_KEY_PREFIX = 'oz-app-entries-';
         const BANS_STORAGE_KEY = 'oz-app-bans';
         const CURRENT_USER_STORAGE_KEY = 'oz-app-current-user';
         const CHAT_USAGE_KEY_PREFIX = 'oz-app-chat-usage-';
+        const API_KEY_STORAGE_KEY = 'oz-app-gemini-api-key';
         const BAN_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
         
         // Gemini API konštanty
-        const apiKey = "AIzaSyDGZFoDcXgHLrhyfada9ZdlrHTnyrfAn2U"; // API kľúč je ponechaný prázdny, bude poskytnutý runtime
-        const GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
-        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-        const MAX_OUTPUT_TOKENS = 120; // Token limit per response
+        // API kľúč sa teraz načíta z localStorage
+        const GEMINI_MODEL = 'gemini-2.5-flash-preview-09-2025'; // Aktualizovaný model
+        // API URL sa bude dynamicky generovať vo funkcii callGeminiAPI
+
+        // --- Modálne okno Nastavení (API Key) ---
+
+        // Zobrazenie modálneho okna
+        settingsButton.addEventListener('click', () => {
+            const currentKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+            apiKeyInput.value = currentKey || ''; // Predvyplnenie aktuálne uloženého kľúča
+            apiKeyMessage.textContent = currentKey ? 'API kľúč je uložený.' : 'API kľúč nie je nastavený.';
+            apiKeyMessage.style.color = currentKey ? '#34d399' : '#f87171';
+            settingsModal.classList.remove('hidden-modal');
+        });
+
+        // Skrytie modálneho okna
+        closeModalButton.addEventListener('click', () => {
+            settingsModal.classList.add('hidden-modal');
+        });
+        
+        // Uloženie API kľúča
+        apiKeyForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newKey = apiKeyInput.value.trim();
+            if (newKey) {
+                localStorage.setItem(API_KEY_STORAGE_KEY, newKey);
+                apiKeyMessage.textContent = 'API kľúč bol úspešne uložený!';
+                apiKeyMessage.style.color = '#34d399';
+                // Aktualizácia stavu chatu po uložení kľúča
+                const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_STORAGE_KEY));
+                if (currentUser) checkChatLimit(currentUser.email);
+            } else {
+                apiKeyMessage.textContent = 'Pole nesmie byť prázdne.';
+                apiKeyMessage.style.color = '#f87171';
+            }
+        });
+        
+        // Vymazanie API kľúča
+        deleteApiKeyButton.addEventListener('click', () => {
+            localStorage.removeItem(API_KEY_STORAGE_KEY);
+            apiKeyInput.value = '';
+            apiKeyMessage.textContent = 'API kľúč bol vymazaný!';
+            apiKeyMessage.style.color = '#f87171';
+            // Aktualizácia stavu chatu po vymazaní kľúča
+            const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_STORAGE_KEY));
+            if (currentUser) checkChatLimit(currentUser.email);
+        });
 
         // --- Chat Usage and Limit Functions ---
 
@@ -286,6 +459,16 @@
 
         // Skontroluje, či je používateľ v limite
         function checkChatLimit(email) {
+            const currentApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+            
+            if (!currentApiKey) {
+                chatLimitMessage.textContent = `Pre fungovanie AI chatu je potrebné zadať API kľúč v Nastaveniach (ozubené koliesko).`;
+                chatLimitMessage.classList.remove('hidden');
+                chatInput.disabled = true;
+                chatSendButton.disabled = true;
+                return true; // Zablokuje chat, ak nie je kľúč
+            }
+
             const usage = getChatUsage(email);
             const now = Date.now();
             
@@ -340,7 +523,7 @@
             } else if (sender === 'thinking') {
                  messageDiv.id = 'thinking-message';
                  messageDiv.className = 'flex justify-start';
-                 messageDiv.innerHTML = `<div class="bg-slate-700 text-gray-400 p-3 rounded-lg max-w-xs md:max-w-md italic">Thinking...</div>`;
+                 messageDiv.innerHTML = `<div class="bg-slate-700 text-gray-400 p-3 rounded-lg max-w-xs md:max-w-md italic">AI rozmýšľa...</div>`;
             }
             chatWindow.appendChild(messageDiv);
             // Scroll na koniec okna
@@ -349,6 +532,13 @@
 
         // Funkcia na volanie Gemini API
         async function callGeminiAPI(query) {
+            const apiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+            if (!apiKey) {
+                throw new Error("API kľúč nie je nastavený. Nastavte ho v Nastaveniach.");
+            }
+            
+            const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
             const systemPrompt = "Si priateľský AI asistent špecializujúci sa na vysvetľovanie a riešenie problémov súvisiacich s autorskými právami, zákonnými licenciami a evidenciou hudobných diel na Slovensku. Odpovedaj stručne a priamo k veci, s ohľadom na obmedzený priestor.";
 
             const payload = {
@@ -357,25 +547,29 @@
                     parts: [{ text: systemPrompt }]
                 },
                 generationConfig: {
-                    maxOutputTokens: MAX_OUTPUT_TOKENS, // Hard token limit for the response
+                    maxOutputTokens: MAX_CHAT_REQUESTS * 20, // dynamický token limit
                 },
                 tools: [{ "google_search": {} }], // Zapnutie Google Search pre aktuálne informácie
             };
 
-            const apiUrl = GEMINI_API_URL;
             const maxRetries = 3;
             let attempt = 0;
 
             while (attempt < maxRetries) {
                 try {
-                    const response = await fetch(apiUrl, {
+                    const response = await fetch(GEMINI_API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorBody = await response.json();
+                        console.error("API Response Error:", errorBody);
+                        if (response.status === 400 && errorBody.error.message.includes("API key")) {
+                            throw new Error("Neplatný API kľúč. Skontrolujte ho v Nastaveniach.");
+                        }
+                        throw new Error(`HTTP chyba! Stav: ${response.status}`);
                     }
 
                     const result = await response.json();
@@ -384,8 +578,7 @@
                     if (text) {
                         return text;
                     } else {
-                        // Ak model vráti prázdny text (napr. kvôli bezpečnostnému filtru)
-                        return "Prepáč, nemôžem odpovedať na túto otázku. Skús preformulovať svoju požiadavku.";
+                        return "Prepáč, model vrátil prázdnu odpoveď. Skús preformulovať svoju požiadavku, alebo skontroluj, či neobsahuje citlivé údaje.";
                     }
 
                 } catch (error) {
@@ -394,7 +587,8 @@
                         const delay = Math.pow(2, attempt) * 1000;
                         await new Promise(resolve => setTimeout(resolve, delay));
                     } else {
-                        throw new Error("Nastala chyba pri komunikácii s AI. Skús to prosím neskôr.");
+                        console.error("Gemini API Error:", error.message);
+                        throw new Error("Nastala chyba pri komunikácii s AI. Skús to prosím neskôr. Ak problém pretrváva, skontroluj svoj API kľúč.");
                     }
                 }
             }
@@ -404,21 +598,20 @@
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_STORAGE_KEY));
-            if (!currentUser) return; // Nemalo by sa stať, ak je app-screen viditeľný
+            if (!currentUser) return;
 
             if (checkChatLimit(currentUser.email)) {
-                return; // Zablokuje odoslanie, ak je limit prekročený
+                return;
             }
 
             const query = chatInput.value.trim();
             if (!query) return;
 
             appendMessage('user', query);
-            chatInput.value = ''; // Vyčistenie poľa
+            chatInput.value = '';
             chatSendButton.disabled = true;
             chatInput.disabled = true;
 
-            // Zobrazenie "Thinking..."
             appendMessage('thinking');
             const thinkingMessage = document.getElementById('thinking-message');
 
@@ -426,21 +619,22 @@
             try {
                 const aiResponse = await callGeminiAPI(query);
                 
-                // Odstránenie "Thinking..."
                 if (thinkingMessage) thinkingMessage.remove();
                 
                 appendMessage('ai', aiResponse);
                 
-                incrementChatUsage(currentUser.email); // Zaznamenanie úspešnej interakcie
+                incrementChatUsage(currentUser.email);
 
             } catch (error) {
                 console.error("AI Error:", error);
                 if (thinkingMessage) thinkingMessage.remove();
-                appendMessage('ai', "Prepáč, došlo k technickej chybe. Skús to prosím znova.");
+                // Zobrazí chybovú správu od API alebo všeobecnú chybu
+                const errorMessage = error.message || "Prepáč, došlo k technickej chybe. Skús to prosím znova.";
+                appendMessage('ai', errorMessage);
             } finally {
                 chatSendButton.disabled = false;
                 chatInput.disabled = false;
-                checkChatLimit(currentUser.email); // Aktualizuje stav po dokončení
+                checkChatLimit(currentUser.email);
             }
         });
 
@@ -537,7 +731,7 @@
             
             const nickname = registerNicknameInput.value.trim();
             const email = registerEmailInput.value.trim();
-            const password = registerPasswordInput.value.trim(); // Odstránenie medzier
+            const password = registerPasswordInput.value.trim();
             const artistCode = artistCodeInput.value.trim();
 
             const users = getUsers();
@@ -565,15 +759,18 @@
                 nickname,
                 email,
                 passwordHash: hashPassword(password),
-                artistCode: artistCode, // Uloženie zvoleného kódu umelca
+                artistCode: artistCode,
                 created_at: Date.now()
             };
             
             users.push(newUser);
             saveUsers(users);
 
-            localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(newUser));
-            renderApp();
+            // Automatické prihlásenie a presmerovanie na login formu pre vizuálnu potvrdzovaciu správu
+            loginEmailInput.value = email;
+            loginPasswordInput.value = password;
+            loginSuccess.textContent = 'Registrácia úspešná! Teraz sa prihlás.';
+            loginSuccess.classList.remove('hidden');
             showForm('login-form');
         });
 
@@ -581,10 +778,10 @@
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             loginError.textContent = '';
-            loginSuccess.classList.add('hidden'); // Skryjeme správu o úspešnom prihlásení
+            loginSuccess.classList.add('hidden');
 
             const email = loginEmailInput.value.trim();
-            const password = loginPasswordInput.value.trim(); // Odstránenie medzier
+            const password = loginPasswordInput.value.trim();
 
             const users = getUsers();
             const user = users.find(u => u.email === email);
@@ -792,11 +989,6 @@
     </script>
 </body>
 </html>
-
-
-
-
-
 
 
 
